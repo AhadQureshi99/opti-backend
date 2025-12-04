@@ -17,9 +17,9 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: "https://optislip.com", // <-- your Hostinger frontend domain
+  origin: ["http://localhost:3000", "https://www.optislip.com"], // add all allowed origins
   methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  credentials: true, // if you are sending cookies
 }));
 
 app.use(express.json());

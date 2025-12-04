@@ -302,7 +302,7 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": { "raw": "{{baseUrl}}/api/expenses/:id" }
+            "url": { "raw": "{{baseUrl}}/expenses/:id" }
           }
         },
         {
@@ -318,7 +318,7 @@
               "raw": "{\n  \"amount\": 450\n}\n",
               "options": { "raw": { "language": "json" } }
             },
-            "url": { "raw": "{{baseUrl}}/api/expenses/:id" }
+            "url": { "raw": "{{baseUrl}}/expenses/:id" }
           }
         },
         {
@@ -326,7 +326,7 @@
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": { "raw": "{{baseUrl}}/api/expenses/:id" }
+            "url": { "raw": "{{baseUrl}}/expenses/:id" }
           }
         }
       ]
@@ -338,7 +338,7 @@
           "name": "Get Promo (public)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/promo" }
+            "url": { "raw": "{{baseUrl}}/promo" }
           }
         },
         {
@@ -360,7 +360,7 @@
                 { "key": "image", "type": "file", "src": "" }
               ]
             },
-            "url": { "raw": "{{baseUrl}}/api/promo" }
+            "url": { "raw": "{{baseUrl}}/promo" }
           }
         },
         {
@@ -370,7 +370,7 @@
             "header": [
               { "key": "Authorization", "value": "Bearer {{adminToken}}" }
             ],
-            "url": { "raw": "{{baseUrl}}/api/promo" }
+            "url": { "raw": "{{baseUrl}}/promo" }
           }
         }
       ]
@@ -382,7 +382,7 @@
           "name": "Health Check",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/health" }
+            "url": { "raw": "{{baseUrl}}/health" }
           }
         },
         {
@@ -396,7 +396,7 @@
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "https://optislip.com" },
+    { "key": "baseUrl", "value": "https://api.optislip.com" },
     { "key": "token", "value": "" },
     { "key": "adminToken", "value": "" },
     { "key": "exampleFile", "value": "image.jpg" }
