@@ -396,7 +396,7 @@
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "baseUrl", "value": "https://optislip.com" },
     { "key": "token", "value": "" },
     { "key": "adminToken", "value": "" },
     { "key": "exampleFile", "value": "image.jpg" }
