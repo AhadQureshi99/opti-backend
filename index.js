@@ -20,7 +20,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "http://localhost:5174",
+      "http://localhost:5173",
       "https://www.optislip.com",
     ], // add all allowed origins
     methods: ["GET", "POST", "PUT", "DELETE"],
