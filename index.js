@@ -16,11 +16,17 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors({
-  origin: ["http://localhost:3000", "https://www.optislip.com"], // add all allowed origins
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true, // if you are sending cookies
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5174",
+      "https://www.optislip.com",
+    ], // add all allowed origins
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true, // if you are sending cookies
+  })
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
