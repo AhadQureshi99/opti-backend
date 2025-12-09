@@ -21,14 +21,14 @@ router.post(
       .withMessage("Amount must be a positive number"),
     body("category")
       .isIn([
-        "Food",
-        "Transport",
-        "Entertainment",
-        "Shopping",
-        "Utilities",
-        "Healthcare",
-        "Education",
-        "Other",
+        "Salary",
+        "Frame Vendors",
+        "Lens Vendor",
+        "Box Vendor",
+        "Marketing",
+        "Accessories",
+        "Repair and Maintenance",
+        "New Asset Purchase",
       ])
       .withMessage("Invalid category"),
     body("date").optional().isISO8601().withMessage("Invalid date format"),
@@ -55,14 +55,14 @@ router.put(
     body("category")
       .optional()
       .isIn([
-        "Food",
-        "Transport",
-        "Entertainment",
-        "Shopping",
-        "Utilities",
-        "Healthcare",
-        "Education",
-        "Other",
+        "Salary",
+        "Frame Vendors",
+        "Lens Vendor",
+        "Box Vendor",
+        "Marketing",
+        "Accessories",
+        "Repair and Maintenance",
+        "New Asset Purchase",
       ])
       .withMessage("Invalid category"),
     body("date").optional().isISO8601().withMessage("Invalid date format"),
