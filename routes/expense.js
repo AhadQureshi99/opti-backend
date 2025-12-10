@@ -17,9 +17,13 @@ router.post(
   auth,
   [
     body("amount")
-      .isFloat({ min: 0 })
-      .withMessage("Amount must be a positive number"),
+      .notEmpty()
+      .withMessage("Amount is required")
+      .isFloat({ min: 0.01 })
+      .withMessage("Amount must be greater than 0"),
     body("category")
+      .notEmpty()
+      .withMessage("Category is required")
       .isIn([
         "Salary",
         "Frame Vendors",
