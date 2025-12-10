@@ -8,6 +8,7 @@ const userRoutes = require("./routes/user");
 const expenseRoutes = require("./routes/expense");
 const orderRoutes = require("./routes/order");
 const promoRoutes = require("./routes/promo");
+const syncRoutes = require("./routes/sync");
 const errorHandler = require("./middlewares/error");
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/promo", promoRoutes);
+app.use("/api/sync", syncRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
