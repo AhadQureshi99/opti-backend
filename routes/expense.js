@@ -35,7 +35,10 @@ router.post(
         "New Asset Purchase",
       ])
       .withMessage("Invalid category"),
-    body("date").optional().isISO8601().withMessage("Invalid date format"),
+    body("date")
+      .if((value) => value && value.trim() !== "")
+      .isISO8601()
+      .withMessage("Invalid date format"),
     body("description").optional().isString(),
   ],
   addExpense
@@ -69,7 +72,10 @@ router.put(
         "New Asset Purchase",
       ])
       .withMessage("Invalid category"),
-    body("date").optional().isISO8601().withMessage("Invalid date format"),
+    body("date")
+      .if((value) => value && value.trim() !== "")
+      .isISO8601()
+      .withMessage("Invalid date format"),
     body("description").optional().isString(),
   ],
   updateExpense
