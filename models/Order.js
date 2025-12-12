@@ -48,6 +48,11 @@ const orderSchema = new mongoose.Schema(
     importantNote: {
       type: String,
     },
+    trackingId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     status: {
       type: String,
       enum: ["pending", "completed"],
