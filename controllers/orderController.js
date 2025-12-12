@@ -19,6 +19,15 @@ const createOrder = async (req, res) => {
       ? new Date(orderData.deliveryDate)
       : new Date();
 
+    // Generate tracking ID: odrYYYYMMDD_HHMM
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const trackingId = `odr${year}${month}${day}_${hours}${minutes}`;
+
     const sanitized = {
       patientName:
         (orderData.patientName && String(orderData.patientName).trim()) ||
@@ -38,6 +47,7 @@ const createOrder = async (req, res) => {
       leftEye: orderData.leftEye || null,
       addInput: orderData.addInput || orderData.addInput || "",
       importantNote: orderData.note || orderData.importantNote || "",
+      trackingId,
       status: orderData.status || "pending",
     };
 
