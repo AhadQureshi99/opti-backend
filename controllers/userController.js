@@ -54,15 +54,17 @@ const sendOTPHandler = async (req, res) => {
 
     const { email, username, password } = req.body;
 
-    // Check if user already exists and is verified
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
-    if (existingUser && existingUser.isVerified) {
+    // If user exists and is verified and not archived, block registration
+    if (existingUser && existingUser.isVerified && !existingUser.archived) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // If user exists but not verified, update password and resend OTP
-    if (existingUser && !existingUser.isVerified) {
+    // If user exists and is either unverified or archived, update password and reuse record
+    if (existingUser) {
       existingUser.password = password;
+      // don't unarchive yet; we'll unarchive on successful OTP verification
       await existingUser.save();
     } else {
       // Create new user
@@ -135,6 +137,8 @@ const verifyOTP = async (req, res) => {
     }
 
     user.isVerified = true;
+    // If the account was archived, unarchive it on successful verification
+    if (user.archived) user.archived = false;
     await user.save();
 
     // Clean up OTP
@@ -174,9 +178,33 @@ const login = async (req, res) => {
     const query = {
       $or: [{ email: identifier.toLowerCase() }, { username: identifier }],
     };
-    const user = await User.findOne(query);
+    let user = await User.findOne(query);
+
+    // If no primary user found, attempt SubUser login
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      const sub = await SubUser.findOne({ email: identifier.toLowerCase() });
+      if (!sub) return res.status(400).json({ message: "Invalid credentials" });
+
+      const match = await sub.comparePassword(password);
+      if (!match)
+        return res.status(400).json({ message: "Invalid credentials" });
+
+      // Issue token that points to the main user's id but marks token as sub-user
+      const token = jwt.sign(
+        {
+          userId: sub.mainUser.toString(),
+          subUserId: sub._id.toString(),
+          isSubUser: true,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      return res.json({
+        message: "Login successful (sub-user)",
+        token,
+        user: { id: sub.mainUser, subUserId: sub._id, isSubUser: true },
+      });
     }
 
     if (!user.isVerified) {
@@ -479,6 +507,13 @@ const updateProfile = async (req, res) => {
       website,
     } = req.body;
 
+    // Disallow sub-users from updating the main shop profile
+    if (req.user && req.user.isSubUser) {
+      return res
+        .status(403)
+        .json({ message: "Sub-users cannot update shop profile" });
+    }
+
     // For admin settings, assume admin is logged in and get from token if available, else find admin
     let user;
     if (req.user && req.user.userId) {
@@ -521,6 +556,12 @@ const updateProfile = async (req, res) => {
 
 const uploadImage = async (req, res) => {
   try {
+    // Disallow sub-users from changing the shop image
+    if (req.user && req.user.isSubUser) {
+      return res
+        .status(403)
+        .json({ message: "Sub-users cannot upload shop image" });
+    }
     if (!req.file) {
       return res.status(400).json({ message: "No image file provided" });
     }
@@ -546,6 +587,12 @@ const uploadImage = async (req, res) => {
 // Sub-user CRUD functions
 const addSubUser = async (req, res) => {
   try {
+    // Only main users (not sub-users) can add sub-users
+    if (req.user && req.user.isSubUser) {
+      return res
+        .status(403)
+        .json({ message: "Sub-users cannot add sub-users" });
+    }
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -590,6 +637,12 @@ const getSubUsers = async (req, res) => {
 
 const updateSubUser = async (req, res) => {
   try {
+    // Only main users (not sub-users) can update sub-users
+    if (req.user && req.user.isSubUser) {
+      return res
+        .status(403)
+        .json({ message: "Sub-users cannot update sub-users" });
+    }
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -632,6 +685,12 @@ const updateSubUser = async (req, res) => {
 
 const deleteSubUser = async (req, res) => {
   try {
+    // Only main users (not sub-users) can delete sub-users
+    if (req.user && req.user.isSubUser) {
+      return res
+        .status(403)
+        .json({ message: "Sub-users cannot delete sub-users" });
+    }
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid sub-user id" });
@@ -834,6 +893,27 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// Self-archive profile (soft-delete) — user remains in DB and can be restored by re-registering
+const deleteProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // mark archived so data remains; prevent immediate reuse until re-register flow
+    user.archived = true;
+    // optionally mark unverified
+    user.isVerified = false;
+    await user.save();
+
+    res.json({
+      message: "Account archived. Re-register with same email to restore.",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   sendOTPHandler,
   verifyOTP,
@@ -859,4 +939,5 @@ module.exports = {
   adminUpdateUser,
   getAllUsers,
   deleteUser,
+  deleteProfile,
 };
