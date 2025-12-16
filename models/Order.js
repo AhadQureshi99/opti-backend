@@ -45,7 +45,13 @@ const orderSchema = new mongoose.Schema(
     addInput: {
       type: String,
     },
+    note: {
+      type: String,
+    },
     importantNote: {
+      type: String,
+    },
+    specialNote: {
       type: String,
     },
     trackingId: {
