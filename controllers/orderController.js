@@ -50,7 +50,9 @@ const createOrder = async (req, res) => {
       rightEye: orderData.rightEye || null,
       leftEye: orderData.leftEye || null,
       addInput: orderData.addInput || orderData.addInput || "",
+      note: orderData.note || "",
       importantNote: orderData.note || orderData.importantNote || "",
+      specialNote: orderData.specialNote || "",
       trackingId,
       status: orderData.status || "pending",
     };
