@@ -56,7 +56,10 @@ const getExpenses = async (req, res) => {
         filter.date.$gte = new Date(startDate);
       }
       if (endDate) {
-        filter.date.$lte = new Date(endDate);
+        // Set to end of day for inclusive range
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.date.$lte = end;
       }
     }
 
