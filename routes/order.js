@@ -17,6 +17,9 @@ const router = express.Router();
 // Create new order (authenticated users only)
 router.post("/create", auth, createOrder);
 
+// Get orders for current authenticated user (admin will see all)
+router.get("/", auth, getUserOrders);
+
 // Get pending orders (authenticated). Admin sees all.
 router.get("/pending", auth, getPendingOrders);
 

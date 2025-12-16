@@ -127,6 +127,41 @@ const getCompletedOrders = async (req, res) => {
   }
 };
 
+// Get orders for the authenticated user (both pending and completed)
+const getUserOrders = async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
+    const baseFilter = { archived: { $ne: true } };
+    // If not admin, only return the user's orders
+    if (!requestingUser || !requestingUser.isAdmin) {
+      baseFilter.user = req.user.userId;
+    }
+
+    // Optional date filters via query params
+    if (req.query.startDate) {
+      const sd = new Date(req.query.startDate);
+      baseFilter.createdAt = baseFilter.createdAt || {};
+      baseFilter.createdAt.$gte = sd;
+    }
+    if (req.query.endDate) {
+      const ed = new Date(req.query.endDate);
+      baseFilter.createdAt = baseFilter.createdAt || {};
+      // include end of day
+      ed.setHours(23, 59, 59, 999);
+      baseFilter.createdAt.$lte = ed;
+    }
+
+    const orders = await Order.find(baseFilter)
+      .populate("user")
+      .sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Update order
 const updateOrder = async (req, res) => {
   try {
@@ -225,6 +260,7 @@ module.exports = {
   createOrder,
   getPendingOrders,
   getCompletedOrders,
+  getUserOrders,
   getAllOrders,
   getOrderById,
   updateOrder,
