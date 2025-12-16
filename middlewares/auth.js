@@ -8,6 +8,7 @@ const auth = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // decoded may contain { userId, isSubUser, subUserId }
     req.user = decoded;
     next();
   } catch (error) {

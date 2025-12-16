@@ -133,7 +133,12 @@ const getUserOrders = async (req, res) => {
     const requestingUser = await User.findById(req.user.userId).select(
       "isAdmin"
     );
-    const baseFilter = { archived: { $ne: true } };
+    // By default exclude archived; allow override with ?includeArchived=true
+    const includeArchived =
+      String(req.query.includeArchived || "").toLowerCase() === "true";
+    const baseFilter = {};
+    if (!includeArchived) baseFilter.archived = { $ne: true };
+
     // If not admin, only return the user's orders
     if (!requestingUser || !requestingUser.isAdmin) {
       baseFilter.user = req.user.userId;

@@ -5,6 +5,7 @@ const {
   createOrder,
   getPendingOrders,
   getCompletedOrders,
+  getUserOrders,
   getAllOrders,
   getOrderById,
   updateOrder,

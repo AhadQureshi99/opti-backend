@@ -125,6 +125,13 @@ router.put(
 
 router.post("/upload-image", auth, upload.single("image"), uploadImage);
 
+// Self-archive (soft-delete) account — keeps data so re-registering restores it
+router.delete(
+  "/profile",
+  auth,
+  require("../controllers/userController").deleteProfile
+);
+
 // Protected routes for sub-user management
 router.post(
   "/sub-users",

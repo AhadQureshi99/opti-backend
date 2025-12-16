@@ -65,6 +65,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    archived: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
