@@ -1,0 +1,225 @@
+{
+  "info": {
+    "name": "OptiSlip Order Edit Testing",
+    "description": "Complete Postman collection for testing order creation, editing, and management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Login (Get Token)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"your-email@example.com\",\n  \"password\": \"your-password\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/user/login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "user", "login"]
+        }
+      },
+      "description": "Login to get authentication token. Copy token from response and save as {{token}} variable in Postman environment."
+    },
+    {
+      "name": "2. Create New Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientName\": \"John Doe\",\n  \"whatsappNumber\": \"+919876543210\",\n  \"frameDetails\": \"Metal frame, brown\",\n  \"lensType\": \"Polycarbonate\",\n  \"totalAmount\": 5000,\n  \"advance\": 2000,\n  \"balance\": 3000,\n  \"deliveryDate\": \"2025-12-25\",\n  \"note\": \"Rush delivery needed\",\n  \"importantNote\": \"Special coating required\",\n  \"rightEye\": {\n    \"sph\": -1.5,\n    \"cyl\": -0.75,\n    \"axis\": 90\n  },\n  \"leftEye\": {\n    \"sph\": -2.0,\n    \"cyl\": -0.5,\n    \"axis\": 180\n  },\n  \"addInput\": \"+1.00\",\n  \"status\": \"pending\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/orders/create",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "orders", "create"]
+        }
+      },
+      "description": "Create a new pending order. Copy the _id from response for editing later."
+    },
+    {
+      "name": "3. Get Pending Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/orders/pending",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "orders", "pending"]
+        }
+      },
+      "description": "Get all pending orders for the authenticated user. Copy an order _id to use in edit requests."
+    },
+    {
+      "name": "4. Get Completed Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/orders/completed",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "orders", "completed"]
+        }
+      },
+      "description": "Get all completed orders for the authenticated user."
+    },
+    {
+      "name": "5. Get Single Order by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/orders/ORDER_ID_HERE",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "orders", "ORDER_ID_HERE"]
+        }
+      },
+      "description": "Get a specific order by its _id. Replace ORDER_ID_HERE with actual order ID."
+    },
+    {
+      "name": "6. UPDATE Order (EDIT)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientName\": \"John Doe Updated\",\n  \"whatsappNumber\": \"+919876543211\",\n  \"frameDetails\": \"Metal frame, black (updated)\",\n  \"lensType\": \"Polycarbonate - Premium\",\n  \"totalAmount\": 6000,\n  \"advance\": 3000,\n  \"balance\": 3000,\n  \"deliveryDate\": \"2025-12-28\",\n  \"note\": \"Urgent - Updated\",\n  \"importantNote\": \"Anti-glare coating added\",\n  \"rightEye\": {\n    \"sph\": -1.75,\n    \"cyl\": -0.75,\n    \"axis\": 92\n  },\n  \"leftEye\": {\n    \"sph\": -2.0,\n    \"cyl\": -0.5,\n    \"axis\": 180\n  },\n  \"addInput\": \"+1.25\",\n  \"status\": \"pending\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/orders/ORDER_ID_HERE",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "orders", "ORDER_ID_HERE"]
+        }
+      },
+      "description": "Update (edit) an existing order. Replace ORDER_ID_HERE with the order's _id. This is what the pencil icon triggers in the frontend."
+    },
+    {
+      "name": "7. Mark Order as Complete",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/orders/ORDER_ID_HERE/complete",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "orders", "ORDER_ID_HERE", "complete"]
+        }
+      },
+      "description": "Mark a pending order as completed. Replace ORDER_ID_HERE with the order's _id."
+    },
+    {
+      "name": "8. Delete Order (Soft-Delete)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/orders/ORDER_ID_HERE",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "orders", "ORDER_ID_HERE"]
+        }
+      },
+      "description": "Delete (soft-delete/archive) an order. Replace ORDER_ID_HERE with the order's _id. Order will be marked as archived but not removed from DB."
+    },
+    {
+      "name": "9. Get All Orders (Admin Only)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/orders/all",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "orders", "all"]
+        }
+      },
+      "description": "Get all orders (admin only). Requires admin privileges."
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "Bearer token from login. Paste token value here (without 'Bearer' prefix)"
+    }
+  ]
+}
