@@ -461,7 +461,13 @@ const getPublicProfile = async (req, res) => {
       return res.status(404).json({ message: "No public profile available" });
     }
 
-    res.json({ user });
+    // Ensure the response is JSON
+    res.json({
+      shopName: user.shopName,
+      address: user.address,
+      phoneNumber: user.phoneNumber,
+      whatsappNumber: user.whatsappNumber,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
