@@ -6,8 +6,7 @@ const User = require("../models/User");
 const createOrder = async (req, res) => {
   try {
     const orderData = req.body;
-    // Normalize incoming fields and provide sensible defaults so
-    // client-side omissions (especially when offline) don't crash the server.
+    // Normalize incoming fields and provide sensible defaults
     const totalAmount = Number(orderData.totalAmount) || 0;
     const advance = Number(orderData.advance) || 0;
     const balance =
@@ -19,18 +18,14 @@ const createOrder = async (req, res) => {
       ? new Date(orderData.deliveryDate)
       : new Date();
 
-    // Generate tracking ID: odrYYYYMMDD_HHMM_XXXX (with 4-digit random suffix for uniqueness)
+    // Generate tracking ID: ordYYYYMMDD_XXXX (4-digit random suffix)
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(
-      4,
-      "0"
-    );
-    const trackingId = `odr${year}${month}${day}_${hours}${minutes}_${randomSuffix}`;
+    const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+
+    const trackingId = `ord${year}${month}${day}_${randomSuffix}`;
 
     const sanitized = {
       patientName:
@@ -49,7 +44,7 @@ const createOrder = async (req, res) => {
       deliveryDate,
       rightEye: orderData.rightEye || null,
       leftEye: orderData.leftEye || null,
-      addInput: orderData.addInput || orderData.addInput || "",
+      addInput: orderData.addInput || "",
       note: orderData.note || "",
       importantNote: orderData.note || orderData.importantNote || "",
       specialNote: orderData.specialNote || "",
@@ -72,10 +67,7 @@ const createOrder = async (req, res) => {
 // Get pending orders
 const getPendingOrders = async (req, res) => {
   try {
-    // If admin, return all pending orders; otherwise only the user's orders
-    const requestingUser = await User.findById(req.user.userId).select(
-      "isAdmin"
-    );
+    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const baseFilter = { status: "pending", archived: { $ne: true } };
     if (!requestingUser || !requestingUser.isAdmin) {
       baseFilter.user = req.user.userId;
@@ -93,12 +85,9 @@ const getOrderById = async (req, res) => {
     const order = await Order.findById(req.params.id).populate("user");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const requestingUser = await User.findById(req.user.userId).select(
-      "isAdmin"
-    );
+    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
-    // Allow if admin or owner
     if (!isAdminUser) {
       if (!order.user || order.user._id.toString() !== req.user.userId) {
         return res.status(403).json({ message: "Forbidden" });
@@ -114,10 +103,7 @@ const getOrderById = async (req, res) => {
 // Get completed orders
 const getCompletedOrders = async (req, res) => {
   try {
-    // If admin, return all completed orders; otherwise only the user's orders
-    const requestingUser = await User.findById(req.user.userId).select(
-      "isAdmin"
-    );
+    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const baseFilter = { status: "completed", archived: { $ne: true } };
     if (!requestingUser || !requestingUser.isAdmin) {
       baseFilter.user = req.user.userId;
@@ -132,21 +118,16 @@ const getCompletedOrders = async (req, res) => {
 // Get orders for the authenticated user (both pending and completed)
 const getUserOrders = async (req, res) => {
   try {
-    const requestingUser = await User.findById(req.user.userId).select(
-      "isAdmin"
-    );
-    // By default exclude archived; allow override with ?includeArchived=true
+    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const includeArchived =
       String(req.query.includeArchived || "").toLowerCase() === "true";
     const baseFilter = {};
     if (!includeArchived) baseFilter.archived = { $ne: true };
 
-    // If not admin, only return the user's orders
     if (!requestingUser || !requestingUser.isAdmin) {
       baseFilter.user = req.user.userId;
     }
 
-    // Optional date filters via query params
     if (req.query.startDate) {
       const sd = new Date(req.query.startDate);
       baseFilter.createdAt = baseFilter.createdAt || {};
@@ -155,7 +136,6 @@ const getUserOrders = async (req, res) => {
     if (req.query.endDate) {
       const ed = new Date(req.query.endDate);
       baseFilter.createdAt = baseFilter.createdAt || {};
-      // include end of day
       ed.setHours(23, 59, 59, 999);
       baseFilter.createdAt.$lte = ed;
     }
@@ -175,9 +155,7 @@ const updateOrder = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const requestingUser = await User.findById(req.user.userId).select(
-      "isAdmin"
-    );
+    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
     if (!isAdminUser) {
@@ -194,16 +172,13 @@ const updateOrder = async (req, res) => {
   }
 };
 
-// Delete order
-// Soft-delete (archive) order instead of removing from DB so it still appears in search
+// Delete order (soft-delete / archive)
 const deleteOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const requestingUser = await User.findById(req.user.userId).select(
-      "isAdmin"
-    );
+    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
     if (!isAdminUser) {
@@ -220,13 +195,10 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-// Get all orders
+// Get all orders (admin only)
 const getAllOrders = async (req, res) => {
   try {
-    // Only admin may list all orders
-    const requestingUser = await User.findById(req.user.userId).select(
-      "isAdmin"
-    );
+    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     if (!requestingUser || !requestingUser.isAdmin) {
       return res.status(403).json({ message: "Admin privileges required" });
     }
@@ -244,9 +216,7 @@ const markAsComplete = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const requestingUser = await User.findById(req.user.userId).select(
-      "isAdmin"
-    );
+    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
     if (!isAdminUser) {
