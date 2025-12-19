@@ -14,7 +14,7 @@ const generateTrackingId = async () => {
   // Try up to 10 times to avoid collision
   for (let i = 0; i < 10 && exists; i++) {
     const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
-    trackingId = `ord${year}${month}${day}_${randomSuffix}`;
+    trackingId = `ORD${year}${month}${day}_${randomSuffix}`; // Changed to ORD (uppercase)
     exists = await Order.findOne({ trackingId });
   }
 
@@ -36,16 +36,15 @@ const createOrder = async (req, res) => {
     if (!trackingId) {
       trackingId = await generateTrackingId();
     } else {
-      // Validate format
-      if (!/^ord\d{8}_\d{4}$/.test(trackingId)) {
+      // Validate format (updated to expect ORD uppercase)
+      if (!/^ORD\d{8}_\d{4}$/.test(trackingId)) {
         return res.status(400).json({ message: "Invalid trackingId format" });
       }
 
-      // Check for collision (very rare, but safe)
+      // Check for collision
       const existing = await Order.findOne({ trackingId });
       if (existing) {
-        // If collision, generate new one on server
-        trackingId = await generateTrackingId();
+        trackingId = await generateTrackingId(); // Generate new if collision
       }
     }
 
@@ -54,7 +53,7 @@ const createOrder = async (req, res) => {
     const balance =
       typeof orderData.balance !== "undefined"
         ? Number(orderData.balance)
-        : Number((totalAmount - advance).toFixed(2));
+        : totalAmount - advance; // Simplified calculation
 
     const deliveryDate = orderData.deliveryDate
       ? new Date(orderData.deliveryDate)
