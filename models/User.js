@@ -28,13 +28,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    // Shop profile fields
     shopName: { type: String, trim: true },
     address: { type: String, trim: true },
     phoneNumber: { type: String, trim: true },
     whatsappNumber: { type: String, trim: true },
     image: { type: String },
-    // Currency and social links
     currency: { type: String, trim: true },
     facebookId: { type: String, trim: true },
     instagramId: { type: String, trim: true },
@@ -47,14 +45,12 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-// Compare password method
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
