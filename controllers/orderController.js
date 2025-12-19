@@ -38,15 +38,18 @@ const createOrder = async (req, res) => {
       ownerId = subUser.mainUser;
     }
 
-    // Use client-provided trackingId if present
+    // Use client-provided trackingId if present (important for offline sync)
     let trackingId = orderData.trackingId?.trim();
 
     if (!trackingId) {
       trackingId = await generateTrackingId();
     } else {
+      // Validate format
       if (!/^ORD\d{8}_\d{4}$/.test(trackingId)) {
         return res.status(400).json({ message: "Invalid trackingId format" });
       }
+
+      // Check for collision
       const existing = await Order.findOne({ trackingId });
       if (existing) {
         trackingId = await generateTrackingId();
@@ -113,7 +116,7 @@ const getPendingOrders = async (req, res) => {
       targetUserId = subUser.mainUser;
     }
 
-    if (!requestingUser?.isAdmin) {
+    if (!requestingUser || !requestingUser.isAdmin) {
       baseFilter.user = targetUserId;
     }
 
@@ -124,12 +127,13 @@ const getPendingOrders = async (req, res) => {
   }
 };
 
-// Get completed orders
+// Get completed orders (for sales records)
 const getCompletedOrders = async (req, res) => {
   try {
     const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const baseFilter = { status: "completed", archived: { $ne: true } };
 
+    // Resolve target user (main shop owner for sub-users)
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
@@ -137,7 +141,7 @@ const getCompletedOrders = async (req, res) => {
       targetUserId = subUser.mainUser;
     }
 
-    if (!requestingUser?.isAdmin) {
+    if (!requestingUser || !requestingUser.isAdmin) {
       baseFilter.user = targetUserId;
     }
 
@@ -165,7 +169,7 @@ const getUserOrders = async (req, res) => {
       targetUserId = subUser.mainUser;
     }
 
-    if (!requestingUser?.isAdmin) {
+    if (!requestingUser || !requestingUser.isAdmin) {
       baseFilter.user = targetUserId;
     }
 
@@ -199,7 +203,6 @@ const getOrderById = async (req, res) => {
     const requestingUser = await User.findById(req.user.userId).select("isAdmin");
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
-    // Resolve target user for sub-users
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
