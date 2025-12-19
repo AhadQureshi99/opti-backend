@@ -13,14 +13,15 @@ const generateTrackingId = async () => {
   let exists = true;
 
   for (let i = 0; i < 10 && exists; i++) {
-    const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+    const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(
+      4,
+      "0"
+    );
     trackingId = `ORD${year}${month}${day}_${randomSuffix}`;
     exists = await Order.findOne({ trackingId });
   }
 
-  if (exists) {
-    throw new Error("Unable to generate unique tracking ID");
-  }
+  if (exists) throw new Error("Unable to generate unique tracking ID");
 
   return trackingId;
 };
@@ -34,26 +35,21 @@ const createOrder = async (req, res) => {
     let ownerId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
-      if (!subUser) return res.status(403).json({ message: "Sub-user not found" });
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
       ownerId = subUser.mainUser;
     }
 
-    // Use client-provided trackingId if present (important for offline sync)
     let trackingId = orderData.trackingId?.trim();
 
     if (!trackingId) {
       trackingId = await generateTrackingId();
     } else {
-      // Validate format
       if (!/^ORD\d{8}_\d{4}$/.test(trackingId)) {
         return res.status(400).json({ message: "Invalid trackingId format" });
       }
-
-      // Check for collision
       const existing = await Order.findOne({ trackingId });
-      if (existing) {
-        trackingId = await generateTrackingId();
-      }
+      if (existing) trackingId = await generateTrackingId();
     }
 
     const totalAmount = Number(orderData.totalAmount) || 0;
@@ -105,18 +101,20 @@ const createOrder = async (req, res) => {
 // Get pending orders
 const getPendingOrders = async (req, res) => {
   try {
-    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
     const baseFilter = { status: "pending", archived: { $ne: true } };
 
-    // Resolve target user (main shop owner for sub-users)
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
-      if (!subUser) return res.status(403).json({ message: "Sub-user not found" });
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
       targetUserId = subUser.mainUser;
     }
 
-    if (!requestingUser || !requestingUser.isAdmin) {
+    if (!requestingUser?.isAdmin) {
       baseFilter.user = targetUserId;
     }
 
@@ -127,49 +125,73 @@ const getPendingOrders = async (req, res) => {
   }
 };
 
-// Get completed orders (for sales records)
+// Get completed orders
 const getCompletedOrders = async (req, res) => {
   try {
-    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
     const baseFilter = { status: "completed", archived: { $ne: true } };
 
-    // Resolve target user (main shop owner for sub-users)
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
-      if (!subUser) return res.status(403).json({ message: "Sub-user not found" });
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
       targetUserId = subUser.mainUser;
     }
 
-    if (!requestingUser || !requestingUser.isAdmin) {
+    if (!requestingUser?.isAdmin) {
       baseFilter.user = targetUserId;
     }
 
-    const orders = await Order.find(baseFilter).populate("user");
+    const orders = await Order.find(baseFilter)
+      .populate("user")
+      .sort({ createdAt: -1 });
+    res.json(orders); // Return array directly
+  } catch (error) {
+    console.error("getCompletedOrders error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all orders (admin only)
+const getAllOrders = async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
+    if (!requestingUser || !requestingUser.isAdmin) {
+      return res.status(403).json({ message: "Admin privileges required" });
+    }
+
+    const orders = await Order.find().populate("user").sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get orders for the authenticated user (both pending and completed)
+// Get user orders (pending + completed)
 const getUserOrders = async (req, res) => {
   try {
-    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
     const includeArchived =
       String(req.query.includeArchived || "").toLowerCase() === "true";
     const baseFilter = {};
     if (!includeArchived) baseFilter.archived = { $ne: true };
 
-    // Resolve target user (main shop owner for sub-users)
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
-      if (!subUser) return res.status(403).json({ message: "Sub-user not found" });
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
       targetUserId = subUser.mainUser;
     }
 
-    if (!requestingUser || !requestingUser.isAdmin) {
+    if (!requestingUser?.isAdmin) {
       baseFilter.user = targetUserId;
     }
 
@@ -194,19 +216,22 @@ const getUserOrders = async (req, res) => {
   }
 };
 
-// Get order by id
+// Get single order
 const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate("user");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
-      if (!subUser) return res.status(403).json({ message: "Sub-user not found" });
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
       targetUserId = subUser.mainUser;
     }
 
@@ -226,13 +251,16 @@ const updateOrder = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
-      if (!subUser) return res.status(403).json({ message: "Sub-user not found" });
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
       targetUserId = subUser.mainUser;
     }
 
@@ -248,19 +276,22 @@ const updateOrder = async (req, res) => {
   }
 };
 
-// Delete order (soft-delete / archive)
+// Delete order (soft-delete)
 const deleteOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
-      if (!subUser) return res.status(403).json({ message: "Sub-user not found" });
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
       targetUserId = subUser.mainUser;
     }
 
@@ -276,34 +307,22 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-// Get all orders (admin only)
-const getAllOrders = async (req, res) => {
-  try {
-    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
-    if (!requestingUser || !requestingUser.isAdmin) {
-      return res.status(403).json({ message: "Admin privileges required" });
-    }
-
-    const orders = await Order.find().populate("user").sort({ createdAt: -1 });
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
 // Mark order as complete
 const markAsComplete = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const requestingUser = await User.findById(req.user.userId).select("isAdmin");
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
     const isAdminUser = requestingUser && requestingUser.isAdmin;
 
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
       const subUser = await SubUser.findById(req.user.userId);
-      if (!subUser) return res.status(403).json({ message: "Sub-user not found" });
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
       targetUserId = subUser.mainUser;
     }
 
