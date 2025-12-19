@@ -29,50 +29,22 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     // Shop profile fields
-    shopName: {
-      type: String,
-      trim: true,
-    },
-    address: {
-      type: String,
-      trim: true,
-    },
-    phoneNumber: {
-      type: String,
-      trim: true,
-    },
-    whatsappNumber: {
-      type: String,
-      trim: true,
-    },
-    image: {
-      type: String, // Path to uploaded image
-    },
+    shopName: { type: String, trim: true },
+    address: { type: String, trim: true },
+    phoneNumber: { type: String, trim: true },
+    whatsappNumber: { type: String, trim: true },
+    image: { type: String },
     // Currency and social links
-    currency: {
-      type: String,
-      trim: true,
-    },
-    facebookId: {
-      type: String,
-      trim: true,
-    },
-    instagramId: {
-      type: String,
-      trim: true,
-    },
-    website: {
-      type: String,
-      trim: true,
-    },
+    currency: { type: String, trim: true },
+    facebookId: { type: String, trim: true },
+    instagramId: { type: String, trim: true },
+    website: { type: String, trim: true },
     archived: {
       type: Boolean,
       default: false,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 // Hash password before saving

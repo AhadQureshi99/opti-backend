@@ -54,21 +54,19 @@ const sendOTPHandler = async (req, res) => {
 
     const { email, username, password } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    // If user exists and is verified and not archived, block registration
-    if (existingUser && existingUser.isVerified && !existingUser.archived) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+    // Allow re-registration even if user exists (archived or not)
+    let user = await User.findOne({ email });
 
-    // If user exists and is either unverified or archived, update password and reuse record
-    if (existingUser) {
-      existingUser.password = password;
-      // don't unarchive yet; we'll unarchive on successful OTP verification
-      await existingUser.save();
+    if (user) {
+      // Update password for re-registration
+      user.password = password;
+      user.username = username; // allow username change on restore
+      user.isVerified = false; // force re-verification
+      user.archived = false; // unarchive immediately
+      await user.save();
     } else {
       // Create new user
-      const user = new User({
+      user = new User({
         username,
         email,
         password,
@@ -82,13 +80,10 @@ const sendOTPHandler = async (req, res) => {
 
     otpStore.set(email, { otp, expiresAt, username });
 
-    // Prefer to send email when configured, but don't fail registration flow if email sending fails.
     try {
-      // try to send real email (requires EMAIL_USER/EMAIL_PASS env vars)
       await sendOTP(email, otp);
       console.log(`OTP sent to ${email}`);
     } catch (e) {
-      // fallback: log OTP for local testing
       console.warn(
         `Failed to send OTP by email: ${e.message}. Falling back to console log.`
       );
@@ -99,9 +94,7 @@ const sendOTPHandler = async (req, res) => {
   } catch (error) {
     console.error(error);
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({ message: "Username or email already exists" });
+      return res.status(400).json({ message: "Username already exists" });
     }
     res.status(500).json({ message: "Server error" });
   }
@@ -130,15 +123,18 @@ const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    // Find and verify user
+    // Find user (even archived ones)
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
 
+    // Restore archived account
     user.isVerified = true;
-    // If the account was archived, unarchive it on successful verification
-    if (user.archived) user.archived = false;
+    if (user.archived) {
+      user.archived = false;
+      console.log(`Restored archived account for ${email}`);
+    }
     await user.save();
 
     // Clean up OTP
@@ -173,37 +169,19 @@ const login = async (req, res) => {
 
     const { email, password } = req.body;
 
-    // Allow login with either email or username
     const identifier = (email || "").toString().trim();
     const query = {
       $or: [{ email: identifier.toLowerCase() }, { username: identifier }],
     };
-    let user = await User.findOne(query);
+    const user = await User.findOne(query);
 
-    // If no primary user found, attempt SubUser login
-    if (!user) {
-      const sub = await SubUser.findOne({ email: identifier.toLowerCase() });
-      if (!sub) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-      const match = await sub.comparePassword(password);
-      if (!match)
-        return res.status(400).json({ message: "Invalid credentials" });
-
-      // Issue token that points to the main user's id but marks token as sub-user
-      const token = jwt.sign(
-        {
-          userId: sub.mainUser.toString(),
-          subUserId: sub._id.toString(),
-          isSubUser: true,
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
-
-      return res.json({
-        message: "Login successful (sub-user)",
-        token,
-        user: { id: sub.mainUser, subUserId: sub._id, isSubUser: true },
+    // Block archived accounts
+    if (user.archived) {
+      return res.status(403).json({
+        message:
+          "This account has been deleted. Please register again with the same email to restore.",
       });
     }
 
@@ -899,20 +877,19 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// Self-archive profile (soft-delete) — user remains in DB and can be restored by re-registering
+// Self-archive (soft-delete) account — keeps data so re-registering restores it
 const deleteProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // mark archived so data remains; prevent immediate reuse until re-register flow
     user.archived = true;
-    // optionally mark unverified
-    user.isVerified = false;
+    user.isVerified = false; // Force re-verification on restore
     await user.save();
 
     res.json({
-      message: "Account archived. Re-register with same email to restore.",
+      message:
+        "Account archived successfully. Re-register with the same email to restore all your data.",
     });
   } catch (err) {
     console.error(err);
