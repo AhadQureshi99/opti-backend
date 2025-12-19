@@ -24,6 +24,10 @@ const expenseSchema = new mongoose.Schema(
         "Accessories",
         "Repair and Maintenance",
         "New Asset Purchase",
+        "Shoprent",
+        "Welfare",
+        "UtilityBills",
+        "Other Expense"
       ],
     },
     date: {
