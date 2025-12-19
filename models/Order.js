@@ -71,6 +71,7 @@ const orderSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true, // Ensures every order has an owner (main shop)
     },
   },
   {
