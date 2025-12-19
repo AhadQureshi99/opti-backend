@@ -2,11 +2,53 @@ const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const User = require("../models/User");
 
+// Helper to generate tracking ID
+const generateTrackingId = async () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  let trackingId;
+  let exists = true;
+
+  // Try up to 10 times to avoid collision
+  for (let i = 0; i < 10 && exists; i++) {
+    const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+    trackingId = `ord${year}${month}${day}_${randomSuffix}`;
+    exists = await Order.findOne({ trackingId });
+  }
+
+  if (exists) {
+    throw new Error("Unable to generate unique tracking ID");
+  }
+
+  return trackingId;
+};
+
 // Create new order
 const createOrder = async (req, res) => {
   try {
     const orderData = req.body;
-    // Normalize incoming fields and provide sensible defaults
+
+    // Use client-provided trackingId if present (important for offline sync)
+    let trackingId = orderData.trackingId?.trim();
+
+    if (!trackingId) {
+      trackingId = await generateTrackingId();
+    } else {
+      // Validate format
+      if (!/^ord\d{8}_\d{4}$/.test(trackingId)) {
+        return res.status(400).json({ message: "Invalid trackingId format" });
+      }
+
+      // Check for collision (very rare, but safe)
+      const existing = await Order.findOne({ trackingId });
+      if (existing) {
+        // If collision, generate new one on server
+        trackingId = await generateTrackingId();
+      }
+    }
+
     const totalAmount = Number(orderData.totalAmount) || 0;
     const advance = Number(orderData.advance) || 0;
     const balance =
@@ -17,15 +59,6 @@ const createOrder = async (req, res) => {
     const deliveryDate = orderData.deliveryDate
       ? new Date(orderData.deliveryDate)
       : new Date();
-
-    // Generate tracking ID: ordYYYYMMDD_XXXX (4-digit random suffix)
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
-
-    const trackingId = `ord${year}${month}${day}_${randomSuffix}`;
 
     const sanitized = {
       patientName:
@@ -52,7 +85,6 @@ const createOrder = async (req, res) => {
       status: orderData.status || "pending",
     };
 
-    // Attach user from auth middleware (route requires auth)
     if (req.user && req.user.userId) sanitized.user = req.user.userId;
 
     const order = new Order(sanitized);
