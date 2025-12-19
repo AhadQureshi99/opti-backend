@@ -7,20 +7,18 @@ const { validationResult } = require("express-validator");
 const multer = require("multer");
 const path = require("path");
 
-// In-memory storage for OTPs (in production, use Redis or database)
+// In-memory OTP store
 const otpStore = new Map();
 
-// Simple in-memory rate limiter for admin login (per IP)
-// Note: in production use Redis or a proper rate-limiter.
+// Rate limiter for admin login
 const loginAttempts = new Map();
 const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const WINDOW_MS = 15 * 60 * 1000;
 
 function recordLoginAttempt(ip) {
   const now = Date.now();
   const entry = loginAttempts.get(ip) || { count: 0, first: now };
   if (now - entry.first > WINDOW_MS) {
-    // reset window
     entry.count = 1;
     entry.first = now;
   } else {
@@ -48,24 +46,21 @@ const generateOTP = () => {
 const sendOTPHandler = async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    if (!errors.isEmpty())
       return res.status(400).json({ errors: errors.array() });
-    }
 
     const { email, username, password } = req.body;
 
-    // Allow re-registration even if user exists (archived or not)
     let user = await User.findOne({ email });
 
     if (user) {
-      // Update password for re-registration
+      // Allow re-registration: update password/username and reset flags
       user.password = password;
-      user.username = username; // allow username change on restore
-      user.isVerified = false; // force re-verification
-      user.archived = false; // unarchive immediately
+      user.username = username;
+      user.isVerified = false;
+      user.archived = false; // Immediately unarchive on re-registration attempt
       await user.save();
     } else {
-      // Create new user
       user = new User({
         username,
         email,
@@ -76,7 +71,7 @@ const sendOTPHandler = async (req, res) => {
     }
 
     const otp = generateOTP();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const expiresAt = Date.now() + 10 * 60 * 1000;
 
     otpStore.set(email, { otp, expiresAt, username });
 
@@ -84,9 +79,7 @@ const sendOTPHandler = async (req, res) => {
       await sendOTP(email, otp);
       console.log(`OTP sent to ${email}`);
     } catch (e) {
-      console.warn(
-        `Failed to send OTP by email: ${e.message}. Falling back to console log.`
-      );
+      console.warn(`Failed to send OTP: ${e.message}. Logging OTP instead.`);
       console.log(`OTP for ${email}: ${otp}`);
     }
 
@@ -103,50 +96,42 @@ const sendOTPHandler = async (req, res) => {
 const verifyOTP = async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    if (!errors.isEmpty())
       return res.status(400).json({ errors: errors.array() });
-    }
 
     const { email, otp } = req.body;
 
     const storedOTP = otpStore.get(email);
-    if (!storedOTP) {
+    if (!storedOTP)
       return res.status(400).json({ message: "OTP not found or expired" });
-    }
 
     if (Date.now() > storedOTP.expiresAt) {
       otpStore.delete(email);
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    if (storedOTP.otp !== otp) {
+    if (storedOTP.otp !== otp)
       return res.status(400).json({ message: "Invalid OTP" });
-    }
 
-    // Find user (even archived ones)
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
-    }
+    if (!user) return res.status(400).json({ message: "User not found" });
 
-    // Restore archived account
     user.isVerified = true;
     if (user.archived) {
-      user.archived = false;
+      user.archived = false; // RESTORE ACCOUNT
       console.log(`Restored archived account for ${email}`);
     }
     await user.save();
 
-    // Clean up OTP
     otpStore.delete(email);
 
-    // Generate JWT
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
     res.status(201).json({
-      message: "User registered successfully",
+      message:
+        "Login successful! Your account and all data have been restored.",
       token,
       user: {
         id: user._id,
@@ -163,9 +148,8 @@ const verifyOTP = async (req, res) => {
 const login = async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    if (!errors.isEmpty())
       return res.status(400).json({ errors: errors.array() });
-    }
 
     const { email, password } = req.body;
 
@@ -173,15 +157,15 @@ const login = async (req, res) => {
     const query = {
       $or: [{ email: identifier.toLowerCase() }, { username: identifier }],
     };
-    const user = await User.findOne(query);
+    let user = await User.findOne(query);
 
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Block archived accounts
+    // BLOCK ARCHIVED ACCOUNTS
     if (user.archived) {
       return res.status(403).json({
         message:
-          "This account has been deleted. Please register again with the same email to restore.",
+          "This account has been deleted. Please register again to restore your data.",
       });
     }
 
@@ -214,7 +198,6 @@ const login = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 // Admin-only login (for dashboard) — similar to login but requires isAdmin
 const adminLogin = async (req, res) => {
   try {
