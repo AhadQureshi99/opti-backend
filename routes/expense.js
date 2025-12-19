@@ -33,6 +33,11 @@ router.post(
         "Accessories",
         "Repair and Maintenance",
         "New Asset Purchase",
+        "New Asset Purchase",
+        "Shoprent", // ← add
+        "Welfare", // ← add
+        "UtilityBills", // ← add
+        "Other Expense",
       ])
       .withMessage("Invalid category"),
     body("date")
