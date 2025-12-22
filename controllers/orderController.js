@@ -1,3 +1,33 @@
+// Mark order as delivered
+const markAsDelivered = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
+    const isAdminUser = requestingUser && requestingUser.isAdmin;
+
+    let targetUserId = req.user.userId;
+    if (req.user.isSubUser) {
+      const subUser = await SubUser.findById(req.user.userId);
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
+      targetUserId = subUser.mainUser;
+    }
+
+    if (!isAdminUser && order.user.toString() !== targetUserId.toString()) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    order.status = "delivered";
+    await order.save();
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const User = require("../models/User");
@@ -348,4 +378,5 @@ module.exports = {
   updateOrder,
   deleteOrder,
   markAsComplete,
+  markAsDelivered,
 };

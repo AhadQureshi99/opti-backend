@@ -9,7 +9,8 @@ const addExpense = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { amount, category, date, description } = req.body;
+    const { amount, category, date, description, cashPaid, cashInHand } =
+      req.body;
     const userId = req.user.userId;
 
     const expense = new Expense({
@@ -18,6 +19,8 @@ const addExpense = async (req, res) => {
       category,
       date: date ? new Date(date) : new Date(),
       description: description || "",
+      cashPaid: cashPaid || 0,
+      cashInHand: cashInHand || 0,
     });
 
     await expense.save();
@@ -30,6 +33,8 @@ const addExpense = async (req, res) => {
         category: expense.category,
         date: expense.date,
         description: expense.description,
+        cashPaid: expense.cashPaid,
+        cashInHand: expense.cashInHand,
       },
     });
   } catch (error) {
@@ -78,6 +83,8 @@ const getExpenses = async (req, res) => {
         category: exp.category,
         date: exp.date,
         description: exp.description,
+        cashPaid: exp.cashPaid,
+        cashInHand: exp.cashInHand,
       })),
     });
   } catch (error) {
@@ -106,6 +113,8 @@ const getExpense = async (req, res) => {
         category: expense.category,
         date: expense.date,
         description: expense.description,
+        cashPaid: expense.cashPaid,
+        cashInHand: expense.cashInHand,
       },
     });
   } catch (error) {
@@ -142,7 +151,8 @@ const updateExpense = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { amount, category, date, description } = req.body;
+    const { amount, category, date, description, cashPaid, cashInHand } =
+      req.body;
     const userId = req.user.userId;
 
     const updateData = {};
@@ -150,6 +160,8 @@ const updateExpense = async (req, res) => {
     if (category !== undefined) updateData.category = category;
     if (date !== undefined) updateData.date = new Date(date);
     if (description !== undefined) updateData.description = description;
+    if (cashPaid !== undefined) updateData.cashPaid = cashPaid;
+    if (cashInHand !== undefined) updateData.cashInHand = cashInHand;
 
     const expense = await Expense.findOneAndUpdate(
       { _id: id, user: userId },
@@ -169,6 +181,8 @@ const updateExpense = async (req, res) => {
         category: expense.category,
         date: expense.date,
         description: expense.description,
+        cashPaid: expense.cashPaid,
+        cashInHand: expense.cashInHand,
       },
     });
   } catch (error) {

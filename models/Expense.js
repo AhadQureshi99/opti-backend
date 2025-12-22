@@ -12,6 +12,14 @@ const expenseSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    cashPaid: {
+      type: Number,
+      default: 0,
+    },
+    cashInHand: {
+      type: Number,
+      default: 0,
+    },
     category: {
       type: String,
       required: true,
@@ -27,7 +35,7 @@ const expenseSchema = new mongoose.Schema(
         "Shoprent",
         "Welfare",
         "UtilityBills",
-        "Other Expense"
+        "Other Expense",
       ],
     },
     date: {
