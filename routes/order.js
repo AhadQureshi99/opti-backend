@@ -5,6 +5,7 @@ const {
   createOrder,
   getPendingOrders,
   getCompletedOrders,
+  getDeliveredOrders,
   getUserOrders,
   getAllOrders,
   getOrderById,
@@ -29,6 +30,8 @@ router.get("/pending", auth, getPendingOrders);
 
 // Get completed orders (authenticated). Admin sees all.
 router.get("/completed", auth, getCompletedOrders);
+// Get delivered orders (for sales record)
+router.get("/delivered", auth, getDeliveredOrders);
 
 // Get all orders — admin only
 router.get("/all", auth, getAllOrders);

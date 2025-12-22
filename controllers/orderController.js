@@ -155,8 +155,38 @@ const getPendingOrders = async (req, res) => {
   }
 };
 
-// Get only delivered orders for sales record
+// Get only completed orders (for completed orders page)
 const getCompletedOrders = async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.user.userId).select(
+      "isAdmin"
+    );
+    const baseFilter = { status: "completed", archived: { $ne: true } };
+
+    let targetUserId = req.user.userId;
+    if (req.user.isSubUser) {
+      const subUser = await SubUser.findById(req.user.userId);
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
+      targetUserId = subUser.mainUser;
+    }
+
+    if (!requestingUser?.isAdmin) {
+      baseFilter.user = targetUserId;
+    }
+
+    const orders = await Order.find(baseFilter)
+      .populate("user")
+      .sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    console.error("getCompletedOrders error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get only delivered orders (for sales record)
+const getDeliveredOrders = async (req, res) => {
   try {
     const requestingUser = await User.findById(req.user.userId).select(
       "isAdmin"
@@ -180,7 +210,7 @@ const getCompletedOrders = async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
-    console.error("getCompletedOrders error:", error);
+    console.error("getDeliveredOrders error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -372,6 +402,7 @@ module.exports = {
   createOrder,
   getPendingOrders,
   getCompletedOrders,
+  getDeliveredOrders,
   getUserOrders,
   getAllOrders,
   getOrderById,
