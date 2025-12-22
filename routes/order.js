@@ -13,10 +13,10 @@ const {
   markAsComplete,
   markAsDelivered,
 } = require("../controllers/orderController");
-// Mark order as delivered (owner or admin)
-router.put("/:id/delivered", auth, markAsDelivered);
 
 const router = express.Router();
+// Mark order as delivered (owner or admin)
+router.put("/:id/delivered", auth, markAsDelivered);
 
 // Create new order (authenticated users only)
 router.post("/create", auth, createOrder);
