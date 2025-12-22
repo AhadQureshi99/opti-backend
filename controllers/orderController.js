@@ -155,13 +155,13 @@ const getPendingOrders = async (req, res) => {
   }
 };
 
-// Get completed orders
+// Get only delivered orders for sales record
 const getCompletedOrders = async (req, res) => {
   try {
     const requestingUser = await User.findById(req.user.userId).select(
       "isAdmin"
     );
-    const baseFilter = { status: "completed", archived: { $ne: true } };
+    const baseFilter = { status: "delivered", archived: { $ne: true } };
 
     let targetUserId = req.user.userId;
     if (req.user.isSubUser) {
@@ -178,7 +178,7 @@ const getCompletedOrders = async (req, res) => {
     const orders = await Order.find(baseFilter)
       .populate("user")
       .sort({ createdAt: -1 });
-    res.json(orders); // Return array directly
+    res.json(orders);
   } catch (error) {
     console.error("getCompletedOrders error:", error);
     res.status(500).json({ message: error.message });
