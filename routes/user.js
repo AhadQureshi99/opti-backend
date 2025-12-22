@@ -117,7 +117,9 @@ router.put(
     body("password").optional().isLength({ min: 6 }),
     body("shopName").optional().trim(),
     body("address").optional().trim(),
+    body("countryCode").optional().trim(),
     body("phoneNumber").optional().trim(),
+    body("whatsappCode").optional().trim(),
     body("whatsappNumber").optional().trim(),
   ],
   updateProfile

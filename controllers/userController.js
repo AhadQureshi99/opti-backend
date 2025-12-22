@@ -382,7 +382,9 @@ const upload = multer({
 // Profile CRUD functions
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const user = await User.findById(req.user.userId).select(
+      "username email shopName address countryCode phoneNumber whatsappCode whatsappNumber currency image facebookId instagramId website isAdmin"
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -401,20 +403,20 @@ const getPublicProfile = async (req, res) => {
       shopName: { $exists: true, $ne: null, $ne: "" },
       address: { $exists: true, $ne: null, $ne: "" },
     }).select(
-      "shopName address phoneNumber whatsappNumber image facebookId instagramId website username"
+      "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency"
     );
 
     if (!user) {
       // fallback to any verified user
       user = await User.findOne({ isVerified: true }).select(
-        "shopName address phoneNumber whatsappNumber image facebookId instagramId website username email"
+        "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency"
       );
     }
 
     if (!user) {
       // final fallback: return any user in DB (helpful in dev when no verification step completed)
       user = await User.findOne().select(
-        "shopName address phoneNumber whatsappNumber image facebookId instagramId website username email"
+        "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency"
       );
     }
 
@@ -426,8 +428,11 @@ const getPublicProfile = async (req, res) => {
     res.json({
       shopName: user.shopName,
       address: user.address,
-      phoneNumber: user.phoneNumber,
-      whatsappNumber: user.whatsappNumber,
+      countryCode: user.countryCode || "+1",
+      phoneNumber: user.phoneNumber || "N/A",
+      whatsappCode: user.whatsappCode || "+1",
+      whatsappNumber: user.whatsappNumber || "N/A",
+      currency: user.currency,
     });
   } catch (error) {
     console.error(error);
@@ -442,7 +447,7 @@ const getPublicProfileById = async (req, res) => {
     if (!id) return res.status(400).json({ message: "User id required" });
 
     const user = await User.findById(id).select(
-      "shopName address phoneNumber whatsappNumber image facebookId instagramId website username email"
+      "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency"
     );
 
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -466,7 +471,9 @@ const updateProfile = async (req, res) => {
       password,
       shopName,
       address,
+      countryCode,
       phoneNumber,
+      whatsappCode,
       whatsappNumber,
       currency,
       facebookId,
@@ -497,7 +504,9 @@ const updateProfile = async (req, res) => {
     if (password) user.password = password;
     if (shopName !== undefined) user.shopName = shopName;
     if (address !== undefined) user.address = address;
+    if (countryCode !== undefined) user.countryCode = countryCode;
     if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
+    if (whatsappCode !== undefined) user.whatsappCode = whatsappCode;
     if (whatsappNumber !== undefined) user.whatsappNumber = whatsappNumber;
     if (currency !== undefined) user.currency = currency;
     if (facebookId !== undefined) user.facebookId = facebookId;
