@@ -222,7 +222,7 @@ const login = async (req, res) => {
       });
     }
 
-    if (!user.isVerified) {
+    if (!isSubUser && !user.isVerified) {
       return res
         .status(400)
         .json({ message: "Please verify your email first" });
