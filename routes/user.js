@@ -1,16 +1,11 @@
-const { subUserLogin } = require("../controllers/userController");
-// Sub-user login endpoint
-router.post(
-  "/sub-user/login",
-  [
-    body("email").exists().isString().trim(),
-    body("password").exists().isString(),
-  ],
-  subUserLogin
-);
 const express = require("express");
 const { body } = require("express-validator");
+
+const router = express.Router(); // Moved to the top to fix the initialization error!
+
+// All controller imports in one place
 const {
+  subUserLogin,
   sendOTPHandler,
   verifyOTP,
   login,
@@ -29,15 +24,30 @@ const {
   getCounts,
   adminCreateUser,
   getAllUsers,
+  createInitialAdmin,
+  adminLogin,
+  deleteProfile,
+  adminUpdateUser,
+  deleteUser,
 } = require("../controllers/userController");
+
 const {
   getSubUsersForUser,
   addSubUserForUser,
 } = require("../controllers/adminSubUserController");
+
 const auth = require("../middlewares/auth");
 const isAdmin = require("../middlewares/isAdmin");
 
-const router = express.Router();
+// Sub-user login endpoint
+router.post(
+  "/sub-user/login",
+  [
+    body("email").exists().isString().trim(),
+    body("password").exists().isString(),
+  ],
+  subUserLogin
+);
 
 // One-time setup route to create initial admin (only works if no admin exists)
 router.post(
@@ -47,8 +57,7 @@ router.post(
     body("email").isEmail().normalizeEmail(),
     body("password").isLength({ min: 6 }),
   ],
-  // controller will ensure this only runs when no admin exists
-  require("../controllers/userController").createInitialAdmin
+  createInitialAdmin
 );
 
 // Send OTP for registration
@@ -89,7 +98,7 @@ router.post(
     body("email").exists().isString().trim(),
     body("password").exists().isString(),
   ],
-  require("../controllers/userController").adminLogin
+  adminLogin
 );
 
 // Forgot password
@@ -138,11 +147,7 @@ router.put(
 router.post("/upload-image", auth, upload.single("image"), uploadImage);
 
 // Self-archive (soft-delete) account — keeps data so re-registering restores it
-router.delete(
-  "/profile",
-  auth,
-  require("../controllers/userController").deleteProfile
-);
+router.delete("/profile", auth, deleteProfile);
 
 // Protected routes for sub-user management
 router.post(
@@ -189,21 +194,11 @@ router.post(
   adminCreateUser
 );
 
-router.put(
-  "/admin/users/:id",
-  auth,
-  isAdmin,
-  [],
-  require("../controllers/userController").adminUpdateUser
-);
+router.put("/admin/users/:id", auth, isAdmin, [], adminUpdateUser);
 
 router.get("/admin/users", auth, isAdmin, getAllUsers);
-router.delete(
-  "/admin/users/:id",
-  auth,
-  isAdmin,
-  require("../controllers/userController").deleteUser
-);
+
+router.delete("/admin/users/:id", auth, isAdmin, deleteUser);
 
 // Admin routes for sub-users of a specific user
 router.get("/admin/users/:id/sub-users", auth, isAdmin, getSubUsersForUser);
