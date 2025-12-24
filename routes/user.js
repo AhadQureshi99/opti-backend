@@ -1,3 +1,13 @@
+const { subUserLogin } = require("../controllers/userController");
+// Sub-user login endpoint
+router.post(
+  "/sub-user/login",
+  [
+    body("email").exists().isString().trim(),
+    body("password").exists().isString(),
+  ],
+  subUserLogin
+);
 const express = require("express");
 const { body } = require("express-validator");
 const {
