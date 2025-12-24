@@ -1,3 +1,45 @@
+// Sub-user login handler
+const subUserLogin = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty())
+      return res.status(400).json({ errors: errors.array() });
+
+    const { email, password } = req.body;
+    const identifier = (email || "").toString().trim();
+    const query = {
+      $or: [{ email: identifier.toLowerCase() }, { subUsername: identifier }],
+    };
+    let subUser = await SubUser.findOne(query);
+    if (!subUser)
+      return res.status(400).json({ message: "Invalid credentials" });
+
+    const isMatch = await subUser.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { subUserId: subUser._id, isSubUser: true, mainUser: subUser.mainUser },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Sub-user login successful",
+      token,
+      subUser: {
+        id: subUser._id,
+        subUsername: subUser.subUsername,
+        email: subUser.email,
+        mainUser: subUser.mainUser,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const SubUser = require("../models/SubUser");
@@ -915,4 +957,5 @@ module.exports = {
   getAllUsers,
   deleteUser,
   deleteProfile,
+  subUserLogin,
 };
