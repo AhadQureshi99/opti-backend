@@ -116,6 +116,7 @@ const createOrder = async (req, res) => {
       specialNote: orderData.specialNote || "",
       trackingId,
       status: orderData.status || "pending",
+      isDirectRecord: orderData.isDirectRecord || false,
       user: ownerId, // Always the main shop owner
     };
 
