@@ -8,12 +8,15 @@ const auth = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // decoded may contain { userId, isSubUser, subUserId }
+    // decoded may contain { userId, isSubUser, subUserId, mainUser }
     req.user = decoded;
+    req.userId = decoded.isSubUser ? decoded.subUserId : decoded.userId;
     next();
   } catch (error) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 };
+
+module.exports = auth;
 
 module.exports = auth;
