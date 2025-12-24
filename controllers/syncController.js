@@ -2,11 +2,18 @@ const SyncQueue = require("../models/SyncQueue");
 const Order = require("../models/Order");
 const Expense = require("../models/Expense");
 const User = require("../models/User");
+const SubUser = require("../models/SubUser");
 
 // Add items to sync queue (from frontend)
 const addToSyncQueue = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    let userId = req.userId;
+    if (req.user.isSubUser) {
+      const subUser = await require("../models/SubUser").findById(req.userId);
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
+      userId = subUser.mainUser;
+    }
     const { endpoint, method, data, deviceId } = req.body;
 
     if (!endpoint || !method) {
@@ -37,7 +44,13 @@ const addToSyncQueue = async (req, res) => {
 // Get pending syncs for user (for debugging)
 const getPendingSyncs = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    let userId = req.userId;
+    if (req.user.isSubUser) {
+      const subUser = await SubUser.findById(req.userId);
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
+      userId = subUser.mainUser;
+    }
 
     const pending = await SyncQueue.find({
       userId,
@@ -58,7 +71,13 @@ const getPendingSyncs = async (req, res) => {
 // Process sync queue (main sync endpoint)
 const processSyncQueue = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    let userId = req.userId;
+    if (req.user.isSubUser) {
+      const subUser = await SubUser.findById(req.userId);
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
+      userId = subUser.mainUser;
+    }
 
     // Get all pending syncs for this user
     const pendingSyncs = await SyncQueue.find({
@@ -292,7 +311,13 @@ const handleUserSync = async (method, data, userId) => {
 // Bulk sync endpoint - for large batches
 const bulkSync = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    let userId = req.userId;
+    if (req.user.isSubUser) {
+      const subUser = await SubUser.findById(req.userId);
+      if (!subUser)
+        return res.status(403).json({ message: "Sub-user not found" });
+      userId = subUser.mainUser;
+    }
     const { items } = req.body; // Array of { endpoint, method, data }
 
     if (!Array.isArray(items)) {

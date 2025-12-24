@@ -200,8 +200,19 @@ const login = async (req, res) => {
       $or: [{ email: identifier.toLowerCase() }, { username: identifier }],
     };
     let user = await User.findOne(query);
+    let isSubUser = false;
 
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) {
+      // Check if it's a sub-user
+      user = await SubUser.findOne({
+        $or: [{ email: identifier.toLowerCase() }, { subUsername: identifier }],
+      });
+      if (user) {
+        isSubUser = true;
+      } else {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
+    }
 
     // BLOCK ARCHIVED ACCOUNTS
     if (user.archived) {
@@ -222,18 +233,50 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    let token;
+    let userData;
+    if (isSubUser) {
+      token = jwt.sign(
+        { subUserId: user._id, isSubUser: true, mainUser: user.mainUser },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+      userData = {
+        id: user._id,
+        subUsername: user.subUsername,
+        email: user.email,
+        isSubUser: true,
+        mainUser: user.mainUser,
+      };
+    } else {
+      // BLOCK ARCHIVED ACCOUNTS
+      if (user.archived) {
+        return res.status(403).json({
+          message:
+            "This account has been deleted. Please register again to restore your data.",
+        });
+      }
+
+      if (!user.isVerified) {
+        return res
+          .status(400)
+          .json({ message: "Please verify your email first" });
+      }
+
+      token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
+      userData = {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+      };
+    }
 
     res.json({
       message: "Login successful",
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
+      user: userData,
     });
   } catch (error) {
     console.error(error);
@@ -424,7 +467,15 @@ const upload = multer({
 // Profile CRUD functions
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select(
+    let userId = req.userId;
+    if (req.user.isSubUser) {
+      const subUser = await SubUser.findById(req.userId);
+      if (!subUser) {
+        return res.status(404).json({ message: "Sub-user not found" });
+      }
+      userId = subUser.mainUser;
+    }
+    const user = await User.findById(userId).select(
       "username email shopName address countryCode phoneNumber whatsappCode whatsappNumber currency image facebookId instagramId website isAdmin"
     );
     if (!user) {
@@ -532,8 +583,8 @@ const updateProfile = async (req, res) => {
 
     // For admin settings, assume admin is logged in and get from token if available, else find admin
     let user;
-    if (req.user && req.user.userId) {
-      user = await User.findById(req.user.userId);
+    if (req.user && req.userId) {
+      user = await User.findById(req.userId);
     } else {
       user = await User.findOne({ isAdmin: true });
     }
@@ -584,7 +635,7 @@ const uploadImage = async (req, res) => {
       return res.status(400).json({ message: "No image file provided" });
     }
 
-    const user = await User.findById(req.user.userId);
+    const user = await User.findById(req.userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -623,7 +674,7 @@ const addSubUser = async (req, res) => {
       email,
       password,
       phoneNumber,
-      mainUser: req.user.userId,
+      mainUser: req.userId,
     });
 
     await subUser.save();
@@ -643,7 +694,12 @@ const addSubUser = async (req, res) => {
 
 const getSubUsers = async (req, res) => {
   try {
-    const subUsers = await SubUser.find({ mainUser: req.user.userId }).select(
+    if (req.user.isSubUser) {
+      return res
+        .status(403)
+        .json({ message: "Sub-users cannot manage sub-users" });
+    }
+    const subUsers = await SubUser.find({ mainUser: req.userId }).select(
       "-password"
     );
     res.json({ subUsers });
@@ -675,7 +731,7 @@ const updateSubUser = async (req, res) => {
 
     const subUser = await SubUser.findOne({
       _id: id,
-      mainUser: req.user.userId,
+      mainUser: req.userId,
     });
     if (!subUser) {
       return res.status(404).json({ message: "Sub-user not found" });
@@ -716,7 +772,7 @@ const deleteSubUser = async (req, res) => {
 
     const subUser = await SubUser.findOneAndDelete({
       _id: id,
-      mainUser: req.user.userId,
+      mainUser: req.userId,
     });
     if (!subUser) {
       return res.status(404).json({ message: "Sub-user not found" });
@@ -914,7 +970,12 @@ const deleteUser = async (req, res) => {
 // Self-archive (soft-delete) account — keeps data so re-registering restores it
 const deleteProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    if (req.user.isSubUser) {
+      // Delete sub-user
+      await SubUser.findByIdAndDelete(req.userId);
+      return res.json({ message: "Sub-user account deleted" });
+    }
+    const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     user.archived = true;
