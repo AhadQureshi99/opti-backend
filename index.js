@@ -16,8 +16,20 @@ const app = express();
 // Connect to database
 connectDB();
 
+// CORS Configuration
+const corsOptions = {
+  origin: [
+    'https://www.optislip.com',
+    'https://optislip.com',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
