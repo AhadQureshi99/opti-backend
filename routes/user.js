@@ -43,6 +43,9 @@ const isAdmin = require("../middlewares/isAdmin");
 // Google OAuth login endpoint
 router.post("/google-login", [body("token").exists().isString()], googleLogin);
 
+// Google OAuth auth endpoint (alias for compatibility)
+router.post("/google-auth", [body("token").exists().isString()], googleLogin);
+
 // Sub-user login endpoint
 router.post(
   "/sub-user/login",
