@@ -1,5 +1,50 @@
+const mongoose = require("mongoose");
+const User = require("../models/User");
+const SubUser = require("../models/SubUser");
+const jwt = require("jsonwebtoken");
+const { sendOTP, sendForgotPasswordOTP } = require("../utils/email");
+const { validationResult } = require("express-validator");
+const multer = require("multer");
+const path = require("path");
 const { OAuth2Client } = require("google-auth-library");
+
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// In-memory OTP store
+const otpStore = new Map();
+
+// Rate limiter for admin login
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000;
+
+function recordLoginAttempt(ip) {
+  const now = Date.now();
+  const entry = loginAttempts.get(ip) || { count: 0, first: now };
+  if (now - entry.first > WINDOW_MS) {
+    entry.count = 1;
+    entry.first = now;
+  } else {
+    entry.count += 1;
+  }
+  loginAttempts.set(ip, entry);
+  return entry;
+}
+
+function isRateLimited(ip) {
+  const entry = loginAttempts.get(ip);
+  if (!entry) return false;
+  const now = Date.now();
+  if (now - entry.first > WINDOW_MS) {
+    loginAttempts.delete(ip);
+    return false;
+  }
+  return entry.count >= MAX_ATTEMPTS;
+}
+
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
 // Google OAuth login handler
 const googleLogin = async (req, res) => {
@@ -35,14 +80,14 @@ const googleLogin = async (req, res) => {
         username: email.split("@")[0],
         password: Math.random().toString(36).slice(-8), // Random password
         shopName: payload.name || email.split("@")[0],
-        verified: true, // Google verified
+        isVerified: true, // Google verified
         googleId: payload.sub,
       });
       await user.save();
     }
 
     // Generate JWT token
-    const jwtToken = jwt.sign({ userId: user._id }, JWT_SECRET, {
+    const jwtToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
@@ -53,7 +98,7 @@ const googleLogin = async (req, res) => {
         email: user.email,
         username: user.username,
         shopName: user.shopName,
-        verified: user.verified,
+        verified: user.isVerified,
       },
     });
   } catch (error) {
@@ -103,50 +148,6 @@ const subUserLogin = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
-};
-const mongoose = require("mongoose");
-const User = require("../models/User");
-const SubUser = require("../models/SubUser");
-const jwt = require("jsonwebtoken");
-const { sendOTP, sendForgotPasswordOTP } = require("../utils/email");
-const { validationResult } = require("express-validator");
-const multer = require("multer");
-const path = require("path");
-
-// In-memory OTP store
-const otpStore = new Map();
-
-// Rate limiter for admin login
-const loginAttempts = new Map();
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000;
-
-function recordLoginAttempt(ip) {
-  const now = Date.now();
-  const entry = loginAttempts.get(ip) || { count: 0, first: now };
-  if (now - entry.first > WINDOW_MS) {
-    entry.count = 1;
-    entry.first = now;
-  } else {
-    entry.count += 1;
-  }
-  loginAttempts.set(ip, entry);
-  return entry;
-}
-
-function isRateLimited(ip) {
-  const entry = loginAttempts.get(ip);
-  if (!entry) return false;
-  const now = Date.now();
-  if (now - entry.first > WINDOW_MS) {
-    loginAttempts.delete(ip);
-    return false;
-  }
-  return entry.count >= MAX_ATTEMPTS;
-}
-
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 const sendOTPHandler = async (req, res) => {
