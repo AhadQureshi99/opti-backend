@@ -5,6 +5,7 @@ const router = express.Router(); // Moved to the top to fix the initialization e
 
 // All controller imports in one place
 const {
+  googleLogin,
   subUserLogin,
   sendOTPHandler,
   verifyOTP,
@@ -38,6 +39,9 @@ const {
 
 const auth = require("../middlewares/auth");
 const isAdmin = require("../middlewares/isAdmin");
+
+// Google OAuth login endpoint
+router.post("/google-login", [body("token").exists().isString()], googleLogin);
 
 // Sub-user login endpoint
 router.post(

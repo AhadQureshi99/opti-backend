@@ -1,3 +1,67 @@
+const { OAuth2Client } = require("google-auth-library");
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Google OAuth login handler
+const googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Google token is required" });
+    }
+
+    // Verify the Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const email = payload.email;
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ message: "Unable to get email from Google" });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      // Create new user with Google info
+      user = new User({
+        email: email.toLowerCase(),
+        username: email.split("@")[0],
+        password: Math.random().toString(36).slice(-8), // Random password
+        shopName: payload.name || email.split("@")[0],
+        verified: true, // Google verified
+        googleId: payload.sub,
+      });
+      await user.save();
+    }
+
+    // Generate JWT token
+    const jwtToken = jwt.sign({ userId: user._id }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    res.json({
+      token: jwtToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        shopName: user.shopName,
+        verified: user.verified,
+      },
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(400).json({ message: "Google authentication failed" });
+  }
+};
+
 // Sub-user login handler
 const subUserLogin = async (req, res) => {
   try {
@@ -993,6 +1057,7 @@ const deleteProfile = async (req, res) => {
 };
 
 module.exports = {
+  googleLogin,
   sendOTPHandler,
   verifyOTP,
   login,
