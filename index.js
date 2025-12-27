@@ -19,13 +19,14 @@ connectDB();
 // CORS Configuration
 const corsOptions = {
   origin: [
-    'https://www.optislip.com',
-    'https://optislip.com',
-    'http://localhost:5173',
-    'http://localhost:3000'
+    "https://www.optislip.com",
+    "https://optislip.com",
+    "https://dashboard.optislip.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
   ],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 };
 
 // Middleware
