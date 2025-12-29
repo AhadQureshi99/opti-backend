@@ -16,11 +16,9 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
     if (user.archived) {
-      return res
-        .status(403)
-        .json({
-          message: "Shop deactivated. Contact admin.",
-        });
+      return res.status(403).json({
+        message: "Shop deactivated. Contact admin.",
+      });
     }
 
     // decoded may contain { userId, isSubUser, subUserId, mainUser }
