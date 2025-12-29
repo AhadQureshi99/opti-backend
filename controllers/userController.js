@@ -389,8 +389,7 @@ const adminLogin = async (req, res) => {
     if (user.archived) {
       recordLoginAttempt(ip);
       return res.status(403).json({
-        message:
-          "This account has been deactivated. Contact admin for assistance.",
+        message: "Shop deactivated. Contact admin.",
       });
     }
 
