@@ -1004,11 +1004,47 @@ const adminUpdateUser = async (req, res) => {
   }
 };
 
-// Admin: list all users
+// Admin: list all users with order statistics
 const getAllUsers = async (req, res) => {
   try {
+    const Order = require("../models/Order");
     const users = await User.find().select("-password");
-    res.json({ users });
+    
+    // Fetch order statistics for each user
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const userObj = user.toObject();
+        
+        // Get order counts
+        const pendingCount = await Order.countDocuments({ user: user._id, status: "pending" });
+        const completedCount = await Order.countDocuments({ user: user._id, status: "completed" });
+        const directRecordCount = await Order.countDocuments({ user: user._id, isDirectRecord: true });
+        
+        // Get total sales (sum of totalAmount for all orders)
+        const salesResult = await Order.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } }
+        ]);
+        
+        const totalSales = salesResult.length > 0 ? salesResult[0].totalSales : 0;
+        
+        // Get sub-users count
+        const subUsersCount = await SubUser.countDocuments({ mainUser: user._id });
+        
+        return {
+          ...userObj,
+          orderStats: {
+            pending: pendingCount,
+            completed: completedCount,
+            directRecord: directRecordCount,
+            totalSales: totalSales
+          },
+          subUsersCount
+        };
+      })
+    );
+    
+    res.json({ users: usersWithStats });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -1026,6 +1062,33 @@ const deleteUser = async (req, res) => {
     // Optionally, remove sub-users belonging to this user
     await SubUser.deleteMany({ mainUser: id });
     res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Admin: toggle user active/archived status
+const toggleUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    user.archived = !user.archived;
+    await user.save();
+    
+    res.json({ 
+      message: `User ${user.archived ? 'deactivated' : 'activated'} successfully`,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        archived: user.archived
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -1083,6 +1146,7 @@ module.exports = {
   adminUpdateUser,
   getAllUsers,
   deleteUser,
+  toggleUserStatus,
   deleteProfile,
   subUserLogin,
 };

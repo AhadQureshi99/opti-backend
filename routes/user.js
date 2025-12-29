@@ -28,6 +28,7 @@ const {
   createInitialAdmin,
   adminLogin,
   deleteProfile,
+  toggleUserStatus,
   adminUpdateUser,
   deleteUser,
 } = require("../controllers/userController");
@@ -206,6 +207,8 @@ router.put("/admin/users/:id", auth, isAdmin, [], adminUpdateUser);
 router.get("/admin/users", auth, isAdmin, getAllUsers);
 
 router.delete("/admin/users/:id", auth, isAdmin, deleteUser);
+
+router.patch("/admin/users/:id/toggle-status", auth, isAdmin, toggleUserStatus);
 
 // Admin routes for sub-users of a specific user
 router.get("/admin/users/:id/sub-users", auth, isAdmin, getSubUsersForUser);
