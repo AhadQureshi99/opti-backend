@@ -123,6 +123,15 @@ const subUserLogin = async (req, res) => {
     if (!subUser)
       return res.status(400).json({ message: "Invalid credentials" });
 
+    // Check if parent user is archived
+    const parentUser = await User.findById(subUser.mainUser);
+    if (parentUser && parentUser.archived) {
+      return res.status(403).json({
+        message:
+          "This account has been deactivated. Contact the main account holder.",
+      });
+    }
+
     const isMatch = await subUser.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
@@ -375,6 +384,14 @@ const adminLogin = async (req, res) => {
     if (!user) {
       recordLoginAttempt(ip);
       return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    if (user.archived) {
+      recordLoginAttempt(ip);
+      return res.status(403).json({
+        message:
+          "This account has been deactivated. Contact support for assistance.",
+      });
     }
 
     if (!user.isVerified) {
