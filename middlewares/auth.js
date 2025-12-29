@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
   try {
     const token = req.header("Authorization")?.replace("Bearer ", "");
     if (!token) {
@@ -8,6 +9,21 @@ const auth = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if user is archived
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+    if (user.archived) {
+      return res
+        .status(403)
+        .json({
+          message:
+            "This account has been deactivated. Contact admin for assistance.",
+        });
+    }
+
     // decoded may contain { userId, isSubUser, subUserId, mainUser }
     req.user = decoded;
     req.userId = decoded.isSubUser ? decoded.subUserId : decoded.userId;
@@ -16,7 +32,5 @@ const auth = (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 };
-
-module.exports = auth;
 
 module.exports = auth;

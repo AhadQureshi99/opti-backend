@@ -390,7 +390,7 @@ const adminLogin = async (req, res) => {
       recordLoginAttempt(ip);
       return res.status(403).json({
         message:
-          "This account has been deactivated. Contact support for assistance.",
+          "This account has been deactivated. Contact admin for assistance.",
       });
     }
 
