@@ -13,6 +13,7 @@ const {
   deleteOrder,
   markAsComplete,
   markAsDelivered,
+  getOrdersByUserId,
 } = require("../controllers/orderController");
 
 const router = express.Router();
@@ -35,6 +36,9 @@ router.get("/delivered", auth, getDeliveredOrders);
 
 // Get all orders — admin only
 router.get("/all", auth, getAllOrders);
+
+// Get orders by specific user ID — admin only
+router.get("/user/:userId", auth, getOrdersByUserId);
 
 // Get single order (owner or admin)
 router.get("/:id", auth, getOrderById);

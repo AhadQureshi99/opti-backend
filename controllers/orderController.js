@@ -387,6 +387,44 @@ const markAsComplete = async (req, res) => {
   }
 };
 
+// Get orders by specific user ID (admin only)
+const getOrdersByUserId = async (req, res) => {
+  try {
+    // Verify admin
+    const requestingUser = await User.findById(req.userId).select("isAdmin");
+    if (!requestingUser || !requestingUser.isAdmin) {
+      return res.status(403).json({ message: "Admin privileges required" });
+    }
+
+    const userId = req.params.userId;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Get the user to include currency info
+    const targetUser = await User.findById(userId).select(
+      "username email shopName currency"
+    );
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Get all orders for this user (including archived)
+    const orders = await Order.find({ user: userId })
+      .populate("user", "username email shopName currency")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      user: targetUser,
+      orders: orders,
+      count: orders.length,
+    });
+  } catch (error) {
+    console.error("getOrdersByUserId error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createOrder,
   getPendingOrders,
@@ -399,4 +437,5 @@ module.exports = {
   deleteOrder,
   markAsComplete,
   markAsDelivered,
+  getOrdersByUserId,
 };
