@@ -1093,6 +1093,13 @@ const toggleUserStatus = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Prevent deactivating admin accounts
+    if (user.isAdmin && !user.archived) {
+      return res.status(403).json({
+        message: "Admin accounts cannot be deactivated",
+      });
+    }
+
     user.archived = !user.archived;
     await user.save();
 
