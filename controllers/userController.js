@@ -262,8 +262,7 @@ const login = async (req, res) => {
     // BLOCK ARCHIVED ACCOUNTS
     if (user.archived) {
       return res.status(403).json({
-        message:
-          "This account has been deleted. Please register again to restore your data.",
+        message: "Your account has been deactivated. Please contact admin.",
       });
     }
 
