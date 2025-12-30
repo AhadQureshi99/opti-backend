@@ -13,35 +13,6 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // In-memory OTP store
 const otpStore = new Map();
 
-// Rate limiter for admin login
-const loginAttempts = new Map();
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000;
-
-function recordLoginAttempt(ip) {
-  const now = Date.now();
-  const entry = loginAttempts.get(ip) || { count: 0, first: now };
-  if (now - entry.first > WINDOW_MS) {
-    entry.count = 1;
-    entry.first = now;
-  } else {
-    entry.count += 1;
-  }
-  loginAttempts.set(ip, entry);
-  return entry;
-}
-
-function isRateLimited(ip) {
-  const entry = loginAttempts.get(ip);
-  if (!entry) return false;
-  const now = Date.now();
-  if (now - entry.first > WINDOW_MS) {
-    loginAttempts.delete(ip);
-    return false;
-  }
-  return entry.count >= MAX_ATTEMPTS;
-}
-
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
@@ -88,7 +59,7 @@ const googleLogin = async (req, res) => {
 
     // Generate JWT token
     const jwtToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
+      expiresIn: "24h",
     });
 
     res.json({
@@ -140,7 +111,7 @@ const subUserLogin = async (req, res) => {
     const token = jwt.sign(
       { subUserId: subUser._id, isSubUser: true, mainUser: subUser.mainUser },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "24h" }
     );
 
     res.json({
@@ -242,7 +213,7 @@ const verifyOTP = async (req, res) => {
     otpStore.delete(email);
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
+      expiresIn: "24h",
     });
 
     res.status(201).json({
@@ -313,7 +284,7 @@ const login = async (req, res) => {
       token = jwt.sign(
         { subUserId: user._id, isSubUser: true, mainUser: user.mainUser },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+        { expiresIn: "24h" }
       );
       userData = {
         id: user._id,
@@ -338,7 +309,7 @@ const login = async (req, res) => {
       }
 
       token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
+        expiresIn: "24h",
       });
       userData = {
         id: user._id,
@@ -370,11 +341,6 @@ const adminLogin = async (req, res) => {
     )
       .split(",")[0]
       .trim();
-    if (isRateLimited(ip)) {
-      return res
-        .status(429)
-        .json({ message: "Too many login attempts. Try again later." });
-    }
 
     const identifier = (email || "").toString().trim();
     const query = {
@@ -382,41 +348,33 @@ const adminLogin = async (req, res) => {
     };
     const user = await User.findOne(query);
     if (!user) {
-      recordLoginAttempt(ip);
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     if (user.archived) {
-      recordLoginAttempt(ip);
       return res.status(403).json({
         message: "Shop deactivated. Contact admin.",
       });
     }
 
     if (!user.isVerified) {
-      recordLoginAttempt(ip);
       return res
         .status(400)
         .json({ message: "Please verify your email first" });
     }
 
     if (!user.isAdmin) {
-      recordLoginAttempt(ip);
       return res.status(403).json({ message: "Access denied: admin only" });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      recordLoginAttempt(ip);
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
-
-    // Successful login — clear attempts for this ip
-    loginAttempts.delete(ip);
 
     res.json({
       message: "Login successful",
@@ -916,7 +874,7 @@ const createInitialAdmin = async (req, res) => {
     await user.save();
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
+      expiresIn: "24h",
     });
 
     res.status(201).json({
