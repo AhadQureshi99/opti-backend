@@ -982,55 +982,72 @@ const adminUpdateUser = async (req, res) => {
 const getAllUsers = async (req, res) => {
   try {
     const Order = require("../models/Order");
-    const users = await User.find().select("-password");
 
-    // Fetch order statistics for each user
-    const usersWithStats = await Promise.all(
-      users.map(async (user) => {
-        const userObj = user.toObject();
-
-        // Get order counts
-        const pendingCount = await Order.countDocuments({
-          user: user._id,
-          status: "pending",
-        });
-        const completedCount = await Order.countDocuments({
-          user: user._id,
-          status: "completed",
-        });
-        const directRecordCount = await Order.countDocuments({
-          user: user._id,
-          isDirectRecord: true,
-        });
-
-        // Get total sales (sum of totalAmount for all orders)
-        const salesResult = await Order.aggregate([
-          { $match: { user: user._id } },
-          { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } },
-        ]);
-
-        const totalSales =
-          salesResult.length > 0 ? salesResult[0].totalSales : 0;
-
-        // Get sub-users count
-        const subUsersCount = await SubUser.countDocuments({
-          mainUser: user._id,
-        });
-
-        return {
-          ...userObj,
+    // Use aggregation to get all stats in one query
+    const users = await User.aggregate([
+      {
+        $lookup: {
+          from: "orders",
+          localField: "_id",
+          foreignField: "user",
+          as: "orders",
+        },
+      },
+      {
+        $lookup: {
+          from: "subusers",
+          localField: "_id",
+          foreignField: "mainUser",
+          as: "subUsers",
+        },
+      },
+      {
+        $addFields: {
           orderStats: {
-            pending: pendingCount,
-            completed: completedCount,
-            directRecord: directRecordCount,
-            totalSales: totalSales,
+            pending: {
+              $size: {
+                $filter: {
+                  input: "$orders",
+                  as: "order",
+                  cond: { $eq: ["$$order.status", "pending"] },
+                },
+              },
+            },
+            completed: {
+              $size: {
+                $filter: {
+                  input: "$orders",
+                  as: "order",
+                  cond: { $eq: ["$$order.status", "completed"] },
+                },
+              },
+            },
+            directRecord: {
+              $size: {
+                $filter: {
+                  input: "$orders",
+                  as: "order",
+                  cond: { $eq: ["$$order.isDirectRecord", true] },
+                },
+              },
+            },
+            totalSales: {
+              $sum: "$orders.totalAmount",
+            },
           },
-          subUsersCount,
-        };
-      })
-    );
+          subUsersCount: { $size: "$subUsers" },
+        },
+      },
+      {
+        $project: {
+          password: 0,
+          orders: 0,
+          subUsers: 0,
+        },
+      },
+    ]);
 
-    res.json({ users: usersWithStats });
+    res.json({ users });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
