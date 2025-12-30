@@ -748,6 +748,19 @@ const getSubUsers = async (req, res) => {
   }
 };
 
+// Admin: get all sub-users across all users
+const getAllSubUsers = async (req, res) => {
+  try {
+    const subUsers = await SubUser.find()
+      .select("-password")
+      .populate("mainUser", "username email shopName");
+    res.json({ subUsers });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 const updateSubUser = async (req, res) => {
   try {
     // Only main users (not sub-users) can update sub-users
@@ -1142,6 +1155,7 @@ module.exports = {
   upload,
   addSubUser,
   getSubUsers,
+  getAllSubUsers,
   updateSubUser,
   deleteSubUser,
   getCounts,

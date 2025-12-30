@@ -20,6 +20,7 @@ const {
   upload,
   addSubUser,
   getSubUsers,
+  getAllSubUsers,
   updateSubUser,
   deleteSubUser,
   getCounts,
@@ -212,6 +213,7 @@ router.patch("/admin/users/:id/toggle-status", auth, isAdmin, toggleUserStatus);
 
 // Admin routes for sub-users of a specific user
 router.get("/admin/users/:id/sub-users", auth, isAdmin, getSubUsersForUser);
+router.get("/admin/all-sub-users", auth, isAdmin, getAllSubUsers);
 
 router.post(
   "/admin/users/:id/sub-users",
