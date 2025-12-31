@@ -43,6 +43,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    googleId: { type: String, trim: true },
+    hasSetPassword: {
+      type: Boolean,
+      default: true, // Default true for regular signups
+    },
   },
   { timestamps: true }
 );

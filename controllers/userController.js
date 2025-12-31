@@ -45,15 +45,23 @@ const googleLogin = async (req, res) => {
     let user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
-      // Create new user with Google info
+      // Create new user with Google info - set a flag to indicate no password set
+      const tempPassword =
+        Math.random().toString(36).slice(-8) +
+        Math.random().toString(36).slice(-8);
       user = new User({
         email: email.toLowerCase(),
         username: email.split("@")[0],
-        password: Math.random().toString(36).slice(-8), // Random password
+        password: tempPassword, // Temporary password (will be hashed)
         shopName: payload.name || email.split("@")[0],
         isVerified: true, // Google verified
         googleId: payload.sub,
+        hasSetPassword: false, // Flag to indicate user needs to set password
       });
+      await user.save();
+    } else if (user.googleId && !user.hasSetPassword) {
+      // User exists but hasn't set a password yet, update googleId
+      user.googleId = payload.sub;
       await user.save();
     }
 
@@ -123,6 +131,35 @@ const subUserLogin = async (req, res) => {
         email: subUser.email,
         mainUser: subUser.mainUser,
       },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Check if email is already registered (for real-time validation)
+const checkEmailAvailability = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (user && user.isVerified && !user.archived) {
+      return res.json({
+        available: false,
+        message: "Email already registered",
+      });
+    }
+
+    return res.json({
+      available: true,
+      message: "Email is available",
     });
   } catch (error) {
     console.error(error);
@@ -642,6 +679,10 @@ const updateProfile = async (req, res) => {
       user = await User.findOne({ isAdmin: true });
     }
     if (!user) {
+      {
+        user.password = password;
+        user.hasSetPassword = true; // Mark that user has set a custom password
+      }
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -1161,6 +1202,7 @@ const deleteProfile = async (req, res) => {
 
 module.exports = {
   googleLogin,
+  checkEmailAvailability,
   sendOTPHandler,
   verifyOTP,
   login,

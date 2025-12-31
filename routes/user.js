@@ -6,6 +6,7 @@ const router = express.Router(); // Moved to the top to fix the initialization e
 // All controller imports in one place
 const {
   googleLogin,
+  checkEmailAvailability,
   subUserLogin,
   sendOTPHandler,
   verifyOTP,
@@ -47,6 +48,9 @@ router.post("/google-login", [body("token").exists().isString()], googleLogin);
 
 // Google OAuth auth endpoint (alias for compatibility)
 router.post("/google-auth", [body("token").exists().isString()], googleLogin);
+
+// Check email availability (for real-time validation)
+router.get("/check-email", checkEmailAvailability);
 
 // Sub-user login endpoint
 router.post(
