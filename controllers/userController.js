@@ -44,6 +44,13 @@ const googleLogin = async (req, res) => {
     // Find or create user
     let user = await User.findOne({ email: email.toLowerCase() });
 
+    // If the existing account was archived, block Google login with a clear message
+    if (user && user.archived) {
+      return res.status(403).json({
+        message: "Shop deactivated. Contact admin to reactivate your account.",
+      });
+    }
+
     if (!user) {
       // Create new user with Google info - set a flag to indicate no password set
       const tempPassword =
@@ -51,7 +58,7 @@ const googleLogin = async (req, res) => {
         Math.random().toString(36).slice(-8);
       user = new User({
         email: email.toLowerCase(),
-        username: email.split("@")[0],
+        username: payload.name || email.split("@")[0],
         password: tempPassword, // Temporary password (will be hashed)
         shopName: payload.name || email.split("@")[0],
         isVerified: true, // Google verified
@@ -59,9 +66,18 @@ const googleLogin = async (req, res) => {
         hasSetPassword: false, // Flag to indicate user needs to set password
       });
       await user.save();
-    } else if (user.googleId && !user.hasSetPassword) {
-      // User exists but hasn't set a password yet, update googleId
-      user.googleId = payload.sub;
+    } else {
+      // Keep Google linkage fresh for returning users
+      if (!user.googleId || !user.hasSetPassword) {
+        user.googleId = payload.sub;
+      }
+      // Backfill missing display fields from Google payload when available
+      if (!user.username && payload.name) {
+        user.username = payload.name;
+      }
+      if (!user.shopName && payload.name) {
+        user.shopName = payload.name;
+      }
       await user.save();
     }
 
