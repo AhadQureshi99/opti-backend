@@ -401,12 +401,18 @@ const forgotPassword = async (req, res) => {
     const { email } = req.body;
 
     const user = await User.findOne({ email });
-    // Do not send OTP to unregistered or unverified emails.
-    // Return a generic success message to avoid account enumeration.
-    if (!user || !user.isVerified) {
-      return res.json({
-        message:
-          "If the email is registered and verified, an OTP has been sent.",
+
+    // Check if user exists
+    if (!user) {
+      return res.status(400).json({
+        message: "You need to register your email first",
+      });
+    }
+
+    // Check if user is verified
+    if (!user.isVerified) {
+      return res.status(400).json({
+        message: "Please verify your email first",
       });
     }
 
@@ -425,9 +431,8 @@ const forgotPassword = async (req, res) => {
       console.log(`Forgot password OTP for ${email}: ${otp}`);
     }
 
-    // Return generic success regardless to avoid information leakage
     res.json({
-      message: "If the email is registered and verified, an OTP has been sent.",
+      message: "OTP sent to your email for password reset",
     });
   } catch (error) {
     console.error(error);
