@@ -138,7 +138,10 @@ const sendOTPHandler = async (req, res) => {
 
     const { email, username, password } = req.body;
 
-    let user = await User.findOne({ email });
+    // Normalize email to lowercase for consistent checking
+    const normalizedEmail = email.toLowerCase().trim();
+
+    let user = await User.findOne({ email: normalizedEmail });
 
     if (user) {
       // If user is already verified and active, don't allow re-registration
@@ -157,7 +160,7 @@ const sendOTPHandler = async (req, res) => {
     } else {
       user = new User({
         username,
-        email,
+        email: normalizedEmail,
         password,
         isVerified: false,
       });
@@ -167,14 +170,14 @@ const sendOTPHandler = async (req, res) => {
     const otp = generateOTP();
     const expiresAt = Date.now() + 10 * 60 * 1000;
 
-    otpStore.set(email, { otp, expiresAt, username });
+    otpStore.set(normalizedEmail, { otp, expiresAt, username });
 
     try {
-      await sendOTP(email, otp);
-      console.log(`OTP sent to ${email}`);
+      await sendOTP(normalizedEmail, otp);
+      console.log(`OTP sent to ${normalizedEmail}`);
     } catch (e) {
       console.warn(`Failed to send OTP: ${e.message}. Logging OTP instead.`);
-      console.log(`OTP for ${email}: ${otp}`);
+      console.log(`OTP for ${normalizedEmail}: ${otp}`);
     }
 
     res.json({ message: "OTP sent (or logged) successfully" });
