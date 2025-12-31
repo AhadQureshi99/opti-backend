@@ -150,7 +150,8 @@ const checkEmailAvailability = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await User.findOne({ email: normalizedEmail });
 
-    if (user && user.isVerified && !user.archived) {
+    // Block any existing active (non-archived) account regardless of verification
+    if (user && !user.archived) {
       return res.json({
         available: false,
         message: "Email already registered",
@@ -181,14 +182,14 @@ const sendOTPHandler = async (req, res) => {
     let user = await User.findOne({ email: normalizedEmail });
 
     if (user) {
-      // If user is already verified and active, don't allow re-registration
-      if (user.isVerified && !user.archived) {
+      // If the account exists and is not archived, block signup
+      if (!user.archived) {
         return res.status(400).json({
           message: "Email already registered. Please login instead.",
         });
       }
 
-      // Allow re-registration only for archived or unverified accounts
+      // Allow re-registration only for archived accounts (restore flow)
       user.password = password;
       user.username = username;
       user.isVerified = false;
