@@ -141,7 +141,14 @@ const sendOTPHandler = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (user) {
-      // Allow re-registration: update password/username and reset flags
+      // If user is already verified and active, don't allow re-registration
+      if (user.isVerified && !user.archived) {
+        return res.status(400).json({
+          message: "Email already registered. Please login instead.",
+        });
+      }
+
+      // Allow re-registration only for archived or unverified accounts
       user.password = password;
       user.username = username;
       user.isVerified = false;
