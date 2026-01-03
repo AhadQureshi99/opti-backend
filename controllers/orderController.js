@@ -252,16 +252,25 @@ const getUserOrders = async (req, res) => {
       baseFilter.user = targetUserId;
     }
 
-    if (req.query.startDate) {
-      const sd = new Date(req.query.startDate);
-      baseFilter.createdAt = baseFilter.createdAt || {};
-      baseFilter.createdAt.$gte = sd;
-    }
-    if (req.query.endDate) {
-      const ed = new Date(req.query.endDate);
-      baseFilter.createdAt = baseFilter.createdAt || {};
-      ed.setHours(23, 59, 59, 999);
-      baseFilter.createdAt.$lte = ed;
+    // For sales reporting we want the date range
+    // to be based on the slip / delivery date
+    // instead of the creation time, so that
+    // back-dated records (e.g. old sales entered
+    // today) appear under their actual sale date
+    // in Salesrecord. If no explicit deliveryDate
+    // was set, it defaults to creation time.
+    if (req.query.startDate || req.query.endDate) {
+      const dateFilter = {};
+      if (req.query.startDate) {
+        const sd = new Date(req.query.startDate);
+        dateFilter.$gte = sd;
+      }
+      if (req.query.endDate) {
+        const ed = new Date(req.query.endDate);
+        ed.setHours(23, 59, 59, 999);
+        dateFilter.$lte = ed;
+      }
+      baseFilter.deliveryDate = dateFilter;
     }
 
     const orders = await Order.find(baseFilter)
