@@ -252,11 +252,6 @@ const getUserOrders = async (req, res) => {
       baseFilter.user = targetUserId;
     }
 
-    // Use original behaviour: filter by creation time
-    // for the /api/orders range queries so that
-    // Salesrecord sees the same set of orders as
-    // before. Frontend still decides how to place
-    // them on the chart/table.
     if (req.query.startDate) {
       const sd = new Date(req.query.startDate);
       baseFilter.createdAt = baseFilter.createdAt || {};
