@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const SubUser = require("../models/SubUser");
+const Order = require("../models/Order");
 const jwt = require("jsonwebtoken");
 const { sendOTP, sendForgotPasswordOTP } = require("../utils/email");
 const { validationResult } = require("express-validator");
@@ -1139,7 +1140,7 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// Admin: delete a user by id
+// Admin: delete a user by id (permanent delete + cascade to sub-users and orders)
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1147,9 +1148,11 @@ const deleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    // Optionally, remove sub-users belonging to this user
+    // Remove sub-users belonging to this user
     await SubUser.deleteMany({ mainUser: id });
-    res.json({ message: "User deleted successfully" });
+    // Remove all orders belonging to this user (shop)
+    await Order.deleteMany({ user: id });
+    res.json({ message: "User and related data deleted successfully" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

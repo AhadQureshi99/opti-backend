@@ -329,7 +329,7 @@ const updateOrder = async (req, res) => {
   }
 };
 
-// Delete order (soft-delete)
+// Delete order (permanent delete)
 const deleteOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -350,9 +350,8 @@ const deleteOrder = async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    order.archived = true;
-    await order.save();
-    res.json({ message: "Order archived", order });
+    await order.deleteOne();
+    res.json({ message: "Order deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

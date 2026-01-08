@@ -47,6 +47,7 @@ router.get("/:id", auth, getOrderById);
 router.put("/:id", auth, updateOrder);
 
 // Delete order (owner or admin) — soft-delete
+// Delete order (owner or admin) — permanent delete
 router.delete("/:id", auth, deleteOrder);
 
 // Mark order as complete (owner or admin)
