@@ -93,6 +93,14 @@ const createOrder = async (req, res) => {
       ? new Date(orderData.deliveryDate)
       : new Date();
 
+    let status = "pending";
+    if (
+      orderData.status &&
+      ["pending", "completed", "delivered"].includes(orderData.status)
+    ) {
+      status = orderData.status;
+    }
+
     const sanitized = {
       patientName:
         (orderData.patientName && String(orderData.patientName).trim()) ||
@@ -115,7 +123,7 @@ const createOrder = async (req, res) => {
       importantNote: orderData.note || orderData.importantNote || "",
       specialNote: orderData.specialNote || "",
       trackingId,
-      status: orderData.status || "pending",
+      status, // ← now uses the checked value
       isDirectRecord: orderData.isDirectRecord || false,
       user: ownerId, // Always the main shop owner
     };
