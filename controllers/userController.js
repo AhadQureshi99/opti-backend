@@ -884,7 +884,7 @@ const updateSubUser = async (req, res) => {
 
 const deleteSubUser = async (req, res) => {
   try {
-    // Only main users (not sub-users) can delete sub-users
+    // Only main users (not sub-users) or admins can delete sub-users
     if (req.user && req.user.isSubUser) {
       return res
         .status(403)
@@ -895,10 +895,17 @@ const deleteSubUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid sub-user id" });
     }
 
-    const subUser = await SubUser.findOneAndDelete({
-      _id: id,
-      mainUser: req.userId,
-    });
+    let subUser;
+    if (req.user && req.user.isAdmin) {
+      // Admin can delete any sub-user
+      subUser = await SubUser.findByIdAndDelete(id);
+    } else {
+      // Main user can only delete their own sub-users
+      subUser = await SubUser.findOneAndDelete({
+        _id: id,
+        mainUser: req.userId,
+      });
+    }
     if (!subUser) {
       return res.status(404).json({ message: "Sub-user not found" });
     }
