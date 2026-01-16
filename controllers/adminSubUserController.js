@@ -55,7 +55,26 @@ const addSubUserForUser = async (req, res) => {
   }
 };
 
+// Admin: Delete any sub-user by ID
+const adminDeleteSubUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid sub-user id" });
+    }
+    const subUser = await SubUser.findByIdAndDelete(id);
+    if (!subUser) {
+      return res.status(404).json({ message: "Sub-user not found" });
+    }
+    res.json({ message: "Sub-user deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   getSubUsersForUser,
   addSubUserForUser,
+  adminDeleteSubUser,
 };
