@@ -1,5 +1,5 @@
 // Admin: Delete any sub-user by ID
-router.delete("/admin/sub-users/:id", auth, isAdmin, require("../controllers/adminSubUserController").adminDeleteSubUser);
+
 const express = require("express");
 const { body } = require("express-validator");
 
@@ -232,6 +232,13 @@ router.post(
     body("phoneNumber").isLength({ min: 10 }).trim(),
   ],
   addSubUserForUser
+);
+
+router.delete(
+  "/admin/sub-users/:id",
+  auth,
+  isAdmin,
+  require("../controllers/adminSubUserController").adminDeleteSubUser
 );
 
 module.exports = router;
