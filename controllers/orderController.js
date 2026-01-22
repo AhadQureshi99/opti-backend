@@ -45,7 +45,7 @@ const generateTrackingId = async () => {
   for (let i = 0; i < 10 && exists; i++) {
     const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(
       4,
-      "0"
+      "0",
     );
     trackingId = `ORD${year}${month}${day}_${randomSuffix}`;
     exists = await Order.findOne({ trackingId });
@@ -410,7 +410,7 @@ const getOrdersByUserId = async (req, res) => {
 
     // Get the user to include currency info
     const targetUser = await User.findById(userId).select(
-      "username email shopName currency"
+      "username email shopName currency",
     );
     if (!targetUser) {
       return res.status(404).json({ message: "User not found" });

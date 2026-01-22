@@ -1097,6 +1097,7 @@ const getAllUsers = async (req, res) => {
       {
         $addFields: {
           orderStats: {
+            total: { $size: "$orders" },
             pending: {
               $size: {
                 $filter: {
