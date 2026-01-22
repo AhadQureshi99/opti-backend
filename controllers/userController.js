@@ -136,7 +136,7 @@ const subUserLogin = async (req, res) => {
     const token = jwt.sign(
       { subUserId: subUser._id, isSubUser: true, mainUser: subUser.mainUser },
       process.env.JWT_SECRET,
-      { expiresIn: "24h" }
+      { expiresIn: "24h" },
     );
 
     res.json({
@@ -348,7 +348,7 @@ const login = async (req, res) => {
       token = jwt.sign(
         { subUserId: user._id, isSubUser: true, mainUser: user.mainUser },
         process.env.JWT_SECRET,
-        { expiresIn: "24h" }
+        { expiresIn: "24h" },
       );
       userData = {
         id: user._id,
@@ -491,7 +491,7 @@ const forgotPassword = async (req, res) => {
       console.log(`Forgot password OTP sent to ${email}`);
     } catch (e) {
       console.warn(
-        `Failed to send forgot-password OTP by email: ${e.message}. Falling back to console log.`
+        `Failed to send forgot-password OTP by email: ${e.message}. Falling back to console log.`,
       );
       console.log(`Forgot password OTP for ${email}: ${otp}`);
     }
@@ -555,7 +555,7 @@ const storage = multer.diskStorage({
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(
       null,
-      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
+      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname),
     );
   },
 });
@@ -584,7 +584,7 @@ const getProfile = async (req, res) => {
       userId = subUser.mainUser;
     }
     const user = await User.findById(userId).select(
-      "username email shopName address countryCode phoneNumber whatsappCode whatsappNumber currency image facebookId instagramId website isAdmin"
+      "username email shopName address countryCode phoneNumber whatsappCode whatsappNumber currency image facebookId instagramId website isAdmin",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -604,20 +604,20 @@ const getPublicProfile = async (req, res) => {
       shopName: { $exists: true, $ne: null, $ne: "" },
       address: { $exists: true, $ne: null, $ne: "" },
     }).select(
-      "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency"
+      "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency",
     );
 
     if (!user) {
       // fallback to any verified user
       user = await User.findOne({ isVerified: true }).select(
-        "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency"
+        "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency",
       );
     }
 
     if (!user) {
       // final fallback: return any user in DB (helpful in dev when no verification step completed)
       user = await User.findOne().select(
-        "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency"
+        "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency",
       );
     }
 
@@ -648,7 +648,7 @@ const getPublicProfileById = async (req, res) => {
     if (!id) return res.status(400).json({ message: "User id required" });
 
     const user = await User.findById(id).select(
-      "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency"
+      "shopName address countryCode phoneNumber whatsappCode whatsappNumber image facebookId instagramId website currency",
     );
 
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -812,7 +812,7 @@ const getSubUsers = async (req, res) => {
         .json({ message: "Sub-users cannot manage sub-users" });
     }
     const subUsers = await SubUser.find({ mainUser: req.userId }).select(
-      "-password"
+      "-password",
     );
     res.json({ subUsers });
   } catch (error) {
