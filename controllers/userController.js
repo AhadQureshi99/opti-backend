@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const PendingUser = require("../models/PendingUser");
 const SubUser = require("../models/SubUser");
 const Order = require("../models/Order");
 const jwt = require("jsonwebtoken");
@@ -196,6 +197,7 @@ const sendOTPHandler = async (req, res) => {
     // Normalize email to lowercase for consistent checking
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Check if email is already registered as an active user
     let user = await User.findOne({ email: normalizedEmail });
 
     if (user) {
@@ -205,27 +207,26 @@ const sendOTPHandler = async (req, res) => {
           message: "Email already registered. Please login instead.",
         });
       }
-
-      // Allow re-registration only for archived accounts (restore flow)
-      user.password = password;
-      user.username = username;
-      user.isVerified = false;
-      user.archived = false; // Immediately unarchive on re-registration attempt
-      await user.save();
-    } else {
-      user = new User({
-        username,
-        email: normalizedEmail,
-        password,
-        isVerified: false,
-      });
-      await user.save();
     }
 
-    const otp = generateOTP();
-    const expiresAt = Date.now() + 10 * 60 * 1000;
+    // Save to PendingUser instead of User
+    // Delete any existing pending user with same email first
+    await PendingUser.deleteOne({ email: normalizedEmail });
 
-    otpStore.set(normalizedEmail, { otp, expiresAt, username });
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+    const pendingUser = new PendingUser({
+      username,
+      email: normalizedEmail,
+      password,
+      expiresAt,
+    });
+    await pendingUser.save();
+
+    const otp = generateOTP();
+    const otpExpiresAt = Date.now() + 10 * 60 * 1000;
+
+    otpStore.set(normalizedEmail, { otp, expiresAt: otpExpiresAt, username });
 
     try {
       await sendOTP(normalizedEmail, otp);
@@ -239,7 +240,9 @@ const sendOTPHandler = async (req, res) => {
   } catch (error) {
     console.error(error);
     if (error.code === 11000) {
-      return res.status(400).json({ message: "Username already exists" });
+      return res
+        .status(400)
+        .json({ message: "Username or email already exists" });
     }
     res.status(500).json({ message: "Server error" });
   }
@@ -252,38 +255,64 @@ const verifyOTP = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
 
     const { email, otp } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const storedOTP = otpStore.get(email);
+    const storedOTP = otpStore.get(normalizedEmail);
     if (!storedOTP)
       return res.status(400).json({ message: "OTP not found or expired" });
 
     if (Date.now() > storedOTP.expiresAt) {
-      otpStore.delete(email);
+      otpStore.delete(normalizedEmail);
       return res.status(400).json({ message: "OTP expired" });
     }
 
     if (storedOTP.otp !== otp)
       return res.status(400).json({ message: "Invalid OTP" });
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User not found" });
+    // Get the pending user
+    const pendingUser = await PendingUser.findOne({ email: normalizedEmail });
+    if (!pendingUser)
+      return res.status(400).json({ message: "Pending user not found" });
 
-    user.isVerified = true;
-    if (user.archived) {
-      user.archived = false; // RESTORE ACCOUNT
-      console.log(`Restored archived account for ${email}`);
+    // Check if there's an archived account with same email
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (user && user.archived) {
+      // Restore archived account
+      user.password = pendingUser.password;
+      user.username = pendingUser.username;
+      user.isVerified = true;
+      user.archived = false;
+      await user.save();
+      console.log(`Restored archived account for ${normalizedEmail}`);
+    } else if (!user) {
+      // Create new verified user
+      user = new User({
+        username: pendingUser.username,
+        email: normalizedEmail,
+        password: pendingUser.password,
+        isVerified: true,
+      });
+      await user.save();
+    } else {
+      // User exists and is not archived, this shouldn't happen
+      return res.status(400).json({
+        message: "Email already registered. Please login instead.",
+      });
     }
-    await user.save();
 
-    otpStore.delete(email);
+    // Delete the pending user
+    await PendingUser.deleteOne({ email: normalizedEmail });
+
+    // Clear OTP
+    otpStore.delete(normalizedEmail);
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "24h",
     });
 
     res.status(201).json({
-      message:
-        "Login successful! Your account and all data have been restored.",
+      message: "Email verified successfully! Your account is now active.",
       token,
       user: {
         id: user._id,
@@ -1076,8 +1105,14 @@ const getAllUsers = async (req, res) => {
   try {
     const Order = require("../models/Order");
 
-    // Use aggregation to get all stats in one query
+    // Use aggregation to get all stats in one query - ONLY VERIFIED USERS
     const users = await User.aggregate([
+      {
+        $match: {
+          isVerified: true,
+          archived: false,
+        },
+      },
       {
         $lookup: {
           from: "orders",
