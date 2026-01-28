@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
 
 const pendingUserSchema = new mongoose.Schema(
   {
@@ -33,14 +32,7 @@ const pendingUserSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-pendingUserSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});
-
-pendingUserSchema.methods.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
+// Do NOT hash password in PendingUser - it's just temporary storage
+// Password will be hashed by User model when OTP is verified
 
 module.exports = mongoose.model("PendingUser", pendingUserSchema);
