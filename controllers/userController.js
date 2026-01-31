@@ -1105,12 +1105,11 @@ const getAllUsers = async (req, res) => {
   try {
     const Order = require("../models/Order");
 
-    // Use aggregation to get all stats in one query - ONLY VERIFIED USERS
+    // Use aggregation to get all stats in one query - INCLUDES ARCHIVED USERS
     const users = await User.aggregate([
       {
         $match: {
           isVerified: true,
-          archived: false,
         },
       },
       {
