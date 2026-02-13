@@ -47,7 +47,7 @@ async function setPromo(req, res) {
             const filePath = path.resolve(
               __dirname,
               "..",
-              candidate.replace(/^\//, "")
+              candidate.replace(/^\//, ""),
             );
             try {
               await fs.unlink(filePath).catch(() => {});
@@ -85,7 +85,7 @@ async function deletePromo(req, res) {
             const filePath = path.resolve(
               __dirname,
               "..",
-              candidate.replace(/^\//, "")
+              candidate.replace(/^\//, ""),
             );
             try {
               await fs.unlink(filePath).catch(() => {});

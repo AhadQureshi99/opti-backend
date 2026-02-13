@@ -35,7 +35,14 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from uploads directory
+// Serve static files from uploads directory with CORS headers
+app.use("/uploads", (req, res, next) => {
+  // Allow all origins for image access (or restrict to frontend URLs)
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
 app.use("/uploads", express.static("uploads"));
 
 // Routes
